@@ -1,20 +1,25 @@
 const Message = require("../models/Message");
 
-const onlineUsers = {}; 
+const onlineUsers = {};
+const mutedUsers = new Set();
 
 module.exports = (io, socket) => {
 
+  // USER JOIN
   socket.on("join", (username) => {
     onlineUsers[socket.id] = username;
     socket.join("global");
 
-    io.emit("online-users", Object.entries(onlineUsers).map(([id, name]) => ({
-      socketId: id,
-      username: name
-    })));
+    io.emit(
+      "online-users",
+      Object.entries(onlineUsers).map(([id, name]) => ({
+        socketId: id,
+        username: name,
+      }))
+    );
   });
 
- 
+  // JOIN ROOM
   socket.on("join-room", async (room) => {
     socket.join(room);
 
@@ -22,38 +27,47 @@ module.exports = (io, socket) => {
     socket.emit("room-history", history);
   });
 
- 
+  // LEAVE ROOM
   socket.on("leave-room", (room) => {
     socket.leave(room);
   });
 
- 
+  // ROOM MESSAGE
   socket.on("room-message", async ({ room, sender, message }) => {
+    if (mutedUsers.has(socket.id)) return;
+
     const msg = await Message.create({
       sender,
       message,
       room,
-      isPrivate: false
+      isPrivate: false,
     });
 
     io.to(room).emit("room-message", msg);
   });
+
+  // DISCONNECT
   socket.on("disconnect", () => {
     delete onlineUsers[socket.id];
-    io.emit("online-users", Object.entries(onlineUsers).map(([id, name]) => ({
-      socketId: id,
-      username: name
-    })));
-  })
 
-   socket.on("file-message", async (data) => {
+    io.emit(
+      "online-users",
+      Object.entries(onlineUsers).map(([id, name]) => ({
+        socketId: id,
+        username: name,
+      }))
+    );
+  });
+
+  // FILE MESSAGE
+  socket.on("file-message", async (data) => {
     const msg = await Message.create({
       sender: data.sender,
       receiver: data.receiver || null,
       type: data.type,
       fileUrl: data.fileUrl,
       fileName: data.fileName,
-      isPrivate: data.isPrivate
+      isPrivate: data.isPrivate,
     });
 
     if (data.isPrivate) {
@@ -64,35 +78,33 @@ module.exports = (io, socket) => {
     }
   });
 
-
-
-  
-socket.on("typing", ({ username, isPrivate, toSocketId }) => {
-  if (isPrivate && toSocketId) {
-    socket.to(toSocketId).emit("typing", { username });
-  } else {
-    socket.broadcast.emit("typing", { username });
-  }
-});
-
-socket.on("stop-typing", ({ isPrivate, toSocketId }) => {
-  if (isPrivate && toSocketId) {
-    socket.to(toSocketId).emit("stop-typing");
-  } else {
-    socket.broadcast.emit("stop-typing");
-  }
-});
-
-socket.on("message-seen", async (messageId) => {
-  await Message.findByIdAndUpdate(messageId, {
-    status: "seen"
+  // TYPING
+  socket.on("typing", ({ username, isPrivate, toSocketId }) => {
+    if (isPrivate && toSocketId) {
+      socket.to(toSocketId).emit("typing", { username });
+    } else {
+      socket.broadcast.emit("typing", { username });
+    }
   });
 
-  socket.broadcast.emit("message-seen", messageId);
-});
+  socket.on("stop-typing", ({ isPrivate, toSocketId }) => {
+    if (isPrivate && toSocketId) {
+      socket.to(toSocketId).emit("stop-typing");
+    } else {
+      socket.broadcast.emit("stop-typing");
+    }
+  });
 
+  // MESSAGE SEEN
+  socket.on("message-seen", async (messageId) => {
+    await Message.findByIdAndUpdate(messageId, {
+      status: "seen",
+    });
 
+    socket.broadcast.emit("message-seen", messageId);
+  });
 
+  // ADMIN CONTROLS
   socket.on("mute-user", ({ targetSocketId }) => {
     mutedUsers.add(targetSocketId);
     socket.to(targetSocketId).emit("muted");
@@ -106,14 +118,4 @@ socket.on("message-seen", async (messageId) => {
     io.emit("delete-message", messageId);
   });
 
-  socket.on("room-message", async (data) => {
-    if (mutedUsers.has(socket.id)) return;
-
-    // existing room-message logic
-  });
-
-
-
 };
-
-

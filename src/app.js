@@ -1,9 +1,9 @@
 const express = require("express");
 const path = require("path");
 
-const authRoutes = require("./routes/auth.routes");
-const chatRoutes = require("./routes/chat.routes");
-const uploadRoutes = require("./routes/upload.routes");
+const authRoutes = require("./routes/authRoutes");
+const chatRoutes = require("./routes/chatRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
 
 const app = express();
 app.use(express.json());

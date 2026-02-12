@@ -5,31 +5,36 @@
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
-<body class="bg-gray-100 flex items-center justify-center h-screen">
+<body class="bg-gradient-to-br from-pink-500 via-red-500 to-yellow-500 flex items-center justify-center h-screen">
 
-<div class="bg-white p-6 rounded shadow w-80">
-  <h2 class="text-xl font-bold mb-4 text-center">Login</h2>
+<div class="bg-white/90 backdrop-blur-lg p-8 rounded-2xl shadow-2xl w-80 border border-white/40">
+  
+  <h2 class="text-2xl font-bold mb-6 text-center text-pink-600">
+    Welcome Back
+  </h2>
 
   <input id="username"
-    class="w-full border p-2 mb-3 rounded"
+    class="w-full border border-gray-300 p-2 mb-4 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none transition"
     placeholder="Username" />
 
   <input id="password" type="password"
-    class="w-full border p-2 mb-3 rounded"
+    class="w-full border border-gray-300 p-2 mb-4 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none transition"
     placeholder="Password" />
 
   <button onclick="login()"
-    class="w-full bg-green-500 text-white py-2 rounded">
+    class="w-full bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white py-2 rounded-lg font-semibold shadow-md transition duration-300">
     Login
   </button>
 
-  <p class="text-sm mt-3 text-center">
+  <p class="text-sm mt-4 text-center text-gray-600">
     No account?
-    <a href="/register.html" class="text-blue-600">Register</a>
+    <a href="/register.html" class="text-pink-600 font-semibold hover:underline">
+      Register
+    </a>
   </p>
+
 </div>
 
 <script src="/js/auth.js"></script>
 </body>
 </html>
-

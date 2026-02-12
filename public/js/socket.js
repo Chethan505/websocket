@@ -2,14 +2,12 @@ const socket = io();
 const role = localStorage.getItem("role");
 const isAdmin = role === "admin" || role === "moderator";
 
-
 const token = localStorage.getItem("token");
 const username = localStorage.getItem("username");
 
 if (!token || !username) {
   window.location.href = "/login.html";
 }
-
 
 let currentRoom = "global";
 
@@ -19,7 +17,7 @@ socket.emit("join-room", currentRoom);
 const messages = document.getElementById("messages");
 const roomTitle = document.getElementById("roomTitle");
 const roomList = document.getElementById("roomList");
-
+const userList = document.getElementById("userList");
 
 function createRoom() {
   const room = document.getElementById("roomInput").value.trim();
@@ -30,7 +28,6 @@ function createRoom() {
   document.getElementById("roomInput").value = "";
 }
 
-
 function switchRoom(room) {
   socket.emit("leave-room", currentRoom);
   currentRoom = room;
@@ -40,14 +37,12 @@ function switchRoom(room) {
   messages.innerHTML = "";
 }
 
-
 function addRoom(room) {
   const li = document.createElement("li");
   li.innerText = room;
   li.onclick = () => switchRoom(room);
   roomList.appendChild(li);
 }
-
 
 function send() {
   const text = document.getElementById("msg").value;
@@ -62,31 +57,17 @@ function send() {
   document.getElementById("msg").value = "";
 }
 
-
 socket.on("room-history", (msgs) => {
   msgs.forEach(renderMessage);
 });
-
 
 socket.on("room-message", (msg) => {
   renderMessage(msg);
 });
 
-
 function renderMessage(msg) {
- 
 
   const li = document.createElement("li");
-
-   if (isAdmin) {
-  const del = document.createElement("span");
-  del.innerText = " ❌";
-  del.style.cursor = "pointer";
-  del.onclick = () => {
-    socket.emit("admin-message-delete", { messageId: msg._id });
-  };
-  li.appendChild(del);
-}
 
   const isMe = msg.sender === username;
 
@@ -96,60 +77,68 @@ function renderMessage(msg) {
       : "mr-auto bg-white text-gray-800"
   } shadow`;
 
+  if (isAdmin) {
+    const del = document.createElement("span");
+    del.innerText = " ❌";
+    del.style.cursor = "pointer";
+    del.onclick = () => {
+      socket.emit("admin-message-delete", { messageId: msg._id });
+    };
+    li.appendChild(del);
+  }
+
   if (msg.type === "image") {
-    li.innerHTML = `<b>${msg.sender}</b><br>
+    li.innerHTML += `<b>${msg.sender}</b><br>
       <img src="${msg.fileUrl}" class="rounded mt-1 max-h-40">`;
   }
   else if (msg.type === "audio") {
-    li.innerHTML = `<b>${msg.sender}</b><br>
+    li.innerHTML += `<b>${msg.sender}</b><br>
       <audio controls src="${msg.fileUrl}" class="mt-1"></audio>`;
   }
   else if (msg.type === "file") {
-    li.innerHTML = `<b>${msg.sender}</b><br>
+    li.innerHTML += `<b>${msg.sender}</b><br>
       <a href="${msg.fileUrl}" download class="underline">
         ${msg.fileName}
       </a>`;
   }
   else {
-    li.innerHTML = `<b>${msg.sender}</b><br>${msg.message}`;
+    li.innerHTML += `<b>${msg.sender}</b><br>${msg.message}`;
   }
 
   messages.appendChild(li);
   messages.scrollTop = messages.scrollHeight;
 }
 
-
-
-const userList = document.getElementById("userList");
-
-socket.on("online-users", (users) => {
-  userList.innerHTML = "";
-
-  users.forEach(user => {
-    if (user.username === username) return;
-
-    const li = document.createElement("li");
-    li.className = "cursor-pointer hover:text-blue-600";
-    li.innerText = user.username;
-
-    userList.appendChild(li);
-  });
-});
-
-
-function logout() {
-  localStorage.clear();
-  window.location.href = "/login.html";
-}
+/* ===========================
+   FIXED ONLINE USERS SECTION
+   =========================== */
 
 socket.on("online-users", (users) => {
   userList.innerHTML = "";
 
   users.forEach(user => {
-    const li = document.createElement("li");
-    li.className = "flex justify-between items-center";
 
-    li.innerHTML = `<span>${user.username}</span>`;
+    const li = document.createElement("li");
+    li.className = "flex justify-between items-center p-2 hover:bg-pink-50 rounded-lg transition";
+
+    const left = document.createElement("div");
+    left.className = "flex items-center gap-3";
+
+    const firstLetter = user.username.charAt(0).toUpperCase();
+
+    const avatar = document.createElement("div");
+    avatar.className =
+      "w-9 h-9 flex items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-rose-500 text-white font-semibold";
+    avatar.innerText = firstLetter;
+
+    const name = document.createElement("span");
+    name.className = "text-sm font-medium text-gray-700";
+    name.innerText = user.username;
+
+    left.appendChild(avatar);
+    left.appendChild(name);
+
+    li.appendChild(left);
 
     if (isAdmin) {
       const btn = document.createElement("button");
@@ -165,7 +154,6 @@ socket.on("online-users", (users) => {
   });
 });
 
-
 socket.on("muted", () => {
   alert("You are muted by admin");
 });
@@ -180,3 +168,7 @@ socket.on("delete-message", (id) => {
   if (msg) msg.remove();
 });
 
+function logout() {
+  localStorage.clear();
+  window.location.href = "/login.html";
+}
