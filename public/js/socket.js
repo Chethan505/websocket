@@ -1,4 +1,5 @@
 const socket = io();
+
 const role = localStorage.getItem("role");
 const isAdmin = role === "admin" || role === "moderator";
 
@@ -11,13 +12,26 @@ if (!token || !username) {
 
 let currentRoom = "global";
 
-socket.emit("join", username);
+socket.emit("join", {
+  username: username,
+  role: role
+});
+
 socket.emit("join-room", currentRoom);
 
 const messages = document.getElementById("messages");
 const roomTitle = document.getElementById("roomTitle");
 const roomList = document.getElementById("roomList");
 const userList = document.getElementById("userList");
+const fileInput = document.getElementById("fileInput");
+const filePreview = document.getElementById("filePreview");
+
+let selectedFile = null;
+filePreview.innerText = "";
+
+/* ===========================
+   ROOM FUNCTIONS
+=========================== */
 
 function createRoom() {
   const room = document.getElementById("roomInput").value.trim();
@@ -44,74 +58,168 @@ function addRoom(room) {
   roomList.appendChild(li);
 }
 
-function send() {
-  const text = document.getElementById("msg").value;
-  if (!text) return;
+/* ===========================
+   SEND FUNCTION (FIXED)
+=========================== */
 
-  socket.emit("room-message", {
-    room: currentRoom,
-    sender: username,
-    message: text
-  });
+async function send() {
 
-  document.getElementById("msg").value = "";
+  const textInput = document.getElementById("msg");
+  const text = textInput.value.trim();  // ✅ trimmed
+
+  // ===== FILE CASE =====
+  if (selectedFile) {
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+
+      const type = selectedFile.type.startsWith("image")
+        ? "image"
+        : selectedFile.type.startsWith("audio")
+        ? "audio"
+        : "file";
+
+      socket.emit("file-message", {
+        sender: username,
+        type,
+        fileUrl: data.fileUrl,
+        fileName: data.fileName,
+        room: currentRoom
+      });
+
+    } catch (err) {
+      console.error("Upload error:", err);
+    }
+
+    // ✅ Reset everything properly
+    selectedFile = null;
+    fileInput.value = "";
+    filePreview.innerText = "";
+
+    return;
+  }
+
+  // ===== TEXT CASE =====
+  if (text) {
+    socket.emit("room-message", {
+      room: currentRoom,
+      sender: username,
+      message: text
+    });
+
+    textInput.value = "";
+  }
 }
+
+/* ===========================
+   FILE SELECTION
+=========================== */
+
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+
+  selectedFile = file;
+  filePreview.innerText = `Selected: ${file.name}`;
+});
+
+/* ===========================
+   SOCKET LISTENERS
+=========================== */
 
 socket.on("room-history", (msgs) => {
   msgs.forEach(renderMessage);
+});
+
+socket.on("file-message", (msg) => {
+  renderMessage(msg);
 });
 
 socket.on("room-message", (msg) => {
   renderMessage(msg);
 });
 
+/* ===========================
+   RENDER MESSAGE
+=========================== */
+
 function renderMessage(msg) {
 
-  const li = document.createElement("li");
+  const wrapper = document.createElement("li");
+  wrapper.id = msg._id;
 
   const isMe = msg.sender === username;
 
-  li.className = `max-w-xs px-3 py-2 rounded-lg text-sm ${
-    isMe
-      ? "ml-auto bg-green-500 text-white"
-      : "mr-auto bg-white text-gray-800"
-  } shadow`;
+  wrapper.className = `flex ${isMe ? "justify-end" : "justify-start"} my-2`;
 
-  if (isAdmin) {
-    const del = document.createElement("span");
-    del.innerText = " ❌";
-    del.style.cursor = "pointer";
-    del.onclick = () => {
-      socket.emit("admin-message-delete", { messageId: msg._id });
-    };
-    li.appendChild(del);
-  }
+  const bubble = document.createElement("div");
+  bubble.className = `
+    relative max-w-xs px-4 py-2 rounded-lg text-sm shadow
+    ${isMe ? "bg-green-500 text-white" : "bg-white text-gray-800"}
+  `;
+
+  // ===== Message Content =====
+  let content = `<b>${msg.sender}</b><br>`;
 
   if (msg.type === "image") {
-    li.innerHTML += `<b>${msg.sender}</b><br>
-      <img src="${msg.fileUrl}" class="rounded mt-1 max-h-40">`;
+    content += `<img src="${msg.fileUrl}" class="rounded mt-1 max-h-40">`;
   }
   else if (msg.type === "audio") {
-    li.innerHTML += `<b>${msg.sender}</b><br>
-      <audio controls src="${msg.fileUrl}" class="mt-1"></audio>`;
+    content += `<audio controls src="${msg.fileUrl}" class="mt-1"></audio>`;
   }
   else if (msg.type === "file") {
-    li.innerHTML += `<b>${msg.sender}</b><br>
+    content += `
       <a href="${msg.fileUrl}" download class="underline">
         ${msg.fileName}
-      </a>`;
+      </a>
+    `;
   }
   else {
-    li.innerHTML += `<b>${msg.sender}</b><br>${msg.message}`;
+    content += msg.message;
   }
 
-  messages.appendChild(li);
+  bubble.innerHTML = content;
+
+  // ===== DELETE BUTTON =====
+  if (isAdmin || msg.sender === username) {
+
+    const delBtn = document.createElement("button");
+
+   delBtn.className = `
+  absolute top-1 right-1
+  text-gray-300 hover:text-red-500
+  text-xs transition opacity-0 group-hover:opacity-100
+`;
+
+
+    delBtn.innerHTML = "✕";
+
+    delBtn.onclick = () => {
+      socket.emit("delete-message", {
+        messageId: msg._id,
+        username: username
+      });
+    };
+
+    bubble.appendChild(delBtn);
+  }
+
+  wrapper.appendChild(bubble);
+  messages.appendChild(wrapper);
   messages.scrollTop = messages.scrollHeight;
 }
 
+
 /* ===========================
-   FIXED ONLINE USERS SECTION
-   =========================== */
+   ONLINE USERS
+=========================== */
 
 socket.on("online-users", (users) => {
   userList.innerHTML = "";
@@ -137,7 +245,6 @@ socket.on("online-users", (users) => {
 
     left.appendChild(avatar);
     left.appendChild(name);
-
     li.appendChild(left);
 
     if (isAdmin) {
@@ -154,6 +261,10 @@ socket.on("online-users", (users) => {
   });
 });
 
+/* ===========================
+   ADMIN EVENTS
+=========================== */
+
 socket.on("muted", () => {
   alert("You are muted by admin");
 });
@@ -167,6 +278,10 @@ socket.on("delete-message", (id) => {
   const msg = document.getElementById(id);
   if (msg) msg.remove();
 });
+
+/* ===========================
+   LOGOUT
+=========================== */
 
 function logout() {
   localStorage.clear();

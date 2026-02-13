@@ -6,9 +6,11 @@ const mutedUsers = new Set();
 module.exports = (io, socket) => {
 
   // USER JOIN
-  socket.on("join", (username) => {
-    onlineUsers[socket.id] = username;
-    socket.join("global");
+  socket.on("join", ({ username, role }) => {
+  onlineUsers[socket.id] = username;
+  socket.userRole = role;   // 🔥 Save role in socket
+  socket.join("global");
+
 
     io.emit(
       "online-users",
@@ -60,23 +62,25 @@ module.exports = (io, socket) => {
   });
 
   // FILE MESSAGE
-  socket.on("file-message", async (data) => {
-    const msg = await Message.create({
-      sender: data.sender,
-      receiver: data.receiver || null,
-      type: data.type,
-      fileUrl: data.fileUrl,
-      fileName: data.fileName,
-      isPrivate: data.isPrivate,
-    });
+socket.on("file-message", async (data) => {
 
-    if (data.isPrivate) {
-      socket.to(data.toSocketId).emit("file-message", msg);
-      socket.emit("file-message", msg);
-    } else {
-      io.emit("file-message", msg);
-    }
+  if (mutedUsers.has(socket.id)) {
+    socket.emit("muted");
+    return;
+  }
+
+  const msg = await Message.create({
+    sender: data.sender,
+    type: data.type,
+    fileUrl: data.fileUrl,
+    fileName: data.fileName,
+    room: data.room || "global",
+    isPrivate: false
   });
+
+  io.to(data.room).emit("file-message", msg);
+});
+
 
   // TYPING
   socket.on("typing", ({ username, isPrivate, toSocketId }) => {
@@ -114,8 +118,25 @@ module.exports = (io, socket) => {
     socket.to(targetSocketId).emit("kicked");
   });
 
-  socket.on("admin-message-delete", ({ messageId }) => {
-    io.emit("delete-message", messageId);
-  });
+ socket.on("delete-message", async ({ messageId, username }) => {
+
+  try {
+    const message = await Message.findById(messageId);
+    if (!message) return;
+
+    // Allow if user owns message OR admin
+    if (message.sender === username || socket.userRole === "admin" || socket.userRole === "moderator") {
+
+      await Message.findByIdAndDelete(messageId);
+
+      io.to(message.room).emit("delete-message", messageId);
+    }
+
+  } catch (err) {
+    console.error("Delete error:", err);
+  }
+
+});
+
 
 };
