@@ -17,6 +17,7 @@ socket.emit("join", {
   role: role
 });
 
+
 socket.emit("join-room", currentRoom);
 
 const messages = document.getElementById("messages");
@@ -52,11 +53,28 @@ function switchRoom(room) {
 }
 
 function addRoom(room) {
+
   const li = document.createElement("li");
-  li.innerText = room;
+
+  li.className = `
+    flex items-center gap-2 
+    bg-pink-100 text-pink-700 
+    px-3 py-2 rounded-lg 
+    cursor-pointer 
+    hover:bg-pink-200 
+    transition
+  `;
+
+  li.innerHTML = `
+    <span>🔒</span>
+    <span>${room}</span>
+  `;
+
   li.onclick = () => switchRoom(room);
+
   roomList.appendChild(li);
 }
+
 
 /* ===========================
    SEND FUNCTION (FIXED)
@@ -146,6 +164,14 @@ socket.on("room-message", (msg) => {
   renderMessage(msg);
 });
 
+socket.on("room-deleted", (roomName) => {
+
+  alert("Room deleted");
+
+  location.reload();
+});
+
+
 /* ===========================
    RENDER MESSAGE
 =========================== */
@@ -222,13 +248,18 @@ function renderMessage(msg) {
 =========================== */
 
 socket.on("online-users", (users) => {
+
   userList.innerHTML = "";
 
   users.forEach(user => {
 
+    // ❌ Skip yourself
+    if (user.username === username) return;
+
     const li = document.createElement("li");
     li.className = "flex justify-between items-center p-2 hover:bg-pink-50 rounded-lg transition";
 
+    // ===== LEFT SIDE (Avatar + Name) =====
     const left = document.createElement("div");
     left.className = "flex items-center gap-3";
 
@@ -245,21 +276,54 @@ socket.on("online-users", (users) => {
 
     left.appendChild(avatar);
     left.appendChild(name);
+
     li.appendChild(left);
 
+    // ===== RIGHT SIDE (Buttons) =====
+    const actions = document.createElement("div");
+    actions.className = "flex gap-2 items-center";
+
+    // 💬 Private Chat Request Button
+    const requestBtn = document.createElement("button");
+    requestBtn.innerText = "💬";
+    requestBtn.className = "text-xs text-blue-500 hover:text-blue-700";
+
+   requestBtn.onclick = () => {
+
+  if (currentRoom === "global") {
+    alert("Cannot invite users to Global room");
+    return;
+  }
+
+  socket.emit("room-invite", {
+    toSocketId: user.socketId,
+    roomName: currentRoom,
+    fromUsername: username
+  });
+};
+
+
+    actions.appendChild(requestBtn);
+
+    // 🛑 Admin Kick Button
     if (isAdmin) {
-      const btn = document.createElement("button");
-      btn.innerText = "Kick";
-      btn.className = "text-xs text-red-500";
-      btn.onclick = () => {
+      const kickBtn = document.createElement("button");
+      kickBtn.innerText = "Kick";
+      kickBtn.className = "text-xs text-red-500 hover:text-red-700";
+
+      kickBtn.onclick = () => {
         socket.emit("kick-user", { targetSocketId: user.socketId });
       };
-      li.appendChild(btn);
+
+      actions.appendChild(kickBtn);
     }
+
+    li.appendChild(actions);
 
     userList.appendChild(li);
   });
 });
+
 
 /* ===========================
    ADMIN EVENTS
@@ -287,3 +351,91 @@ function logout() {
   localStorage.clear();
   window.location.href = "/login.html";
 }
+
+socket.on("private-chat-request", ({ fromUsername, fromSocketId }) => {
+
+  const accept = confirm(`${fromUsername} wants to start a private chat. Accept?`);
+
+  if (accept) {
+
+    const roomName = `private-${username}-${Date.now()}`;
+
+    socket.emit("private-chat-accept", {
+      fromSocketId,
+      roomName
+    });
+
+    addRoom(roomName, "private");
+    switchRoom(roomName);
+  }
+
+});
+
+socket.on("private-room-created", (roomName) => {
+  addRoom(roomName, "private");
+  switchRoom(roomName);
+});
+
+function deleteRoom() {
+
+  if (currentRoom === "global") {
+    alert("Cannot delete global room");
+    return;
+  }
+
+  const confirmDelete = confirm("Delete this room?");
+  if (!confirmDelete) return;
+
+  socket.emit("delete-room", currentRoom);
+}
+
+
+socket.on("room-invite", ({ roomName, fromUsername, fromSocketId }) => {
+
+  const accept = confirm(`${fromUsername} invited you to join "${roomName}". Accept?`);
+
+  if (accept) {
+
+    socket.emit("accept-room-invite", {
+      roomName,
+      fromSocketId
+    });
+
+  } else {
+
+    socket.emit("ignore-room-invite", {
+      roomName,
+      fromSocketId
+    });
+
+  }
+
+});
+
+
+
+
+socket.on("room-joined", (roomName) => {
+
+  addRoom(roomName, "group");
+  switchRoom(roomName);
+
+});
+
+socket.on("invite-sent", ({ roomName }) => {
+  alert(`Invite sent for room "${roomName}". Waiting for response...`);
+});
+
+
+socket.on("invite-accepted", ({ roomName }) => {
+  alert(`User accepted your invite to "${roomName}"`);
+});
+
+
+
+socket.on("invite-ignored", ({ roomName }) => {
+  alert(`User ignored your invite to "${roomName}"`);
+});
+
+
+

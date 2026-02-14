@@ -6,20 +6,25 @@ const mutedUsers = new Set();
 module.exports = (io, socket) => {
 
   // USER JOIN
-  socket.on("join", ({ username, role }) => {
-  onlineUsers[socket.id] = username;
-  socket.userRole = role;   // 🔥 Save role in socket
+socket.on("join", ({ username, role }) => {
+
+  onlineUsers[socket.id] = {
+    username,
+    role
+  };
+
+  socket.userRole = role;
   socket.join("global");
 
+  io.emit("online-users",
+    Object.entries(onlineUsers).map(([id, user]) => ({
+      socketId: id,
+      username: user.username,
+      role: user.role
+    }))
+  );
+});
 
-    io.emit(
-      "online-users",
-      Object.entries(onlineUsers).map(([id, name]) => ({
-        socketId: id,
-        username: name,
-      }))
-    );
-  });
 
   // JOIN ROOM
   socket.on("join-room", async (room) => {
@@ -138,5 +143,82 @@ socket.on("file-message", async (data) => {
 
 });
 
+// =========================
+// PRIVATE CHAT REQUEST
+// =========================
+
+socket.on("private-chat-request", ({ toSocketId, fromUsername }) => {
+  socket.to(toSocketId).emit("private-chat-request", {
+    fromUsername,
+    fromSocketId: socket.id
+  });
+});
+
+socket.on("private-chat-accept", ({ fromSocketId, roomName }) => {
+
+  socket.join(roomName);
+  io.sockets.sockets.get(fromSocketId)?.join(roomName);
+
+  io.to(roomName).emit("private-room-created", roomName);
+});
+
+socket.on("delete-room", async (roomName) => {
+
+  if (roomName === "global") return;
+
+  await Message.deleteMany({ room: roomName });
+
+  io.to(roomName).emit("room-deleted", roomName);
+});
+
+
+socket.on("room-invite", ({ toSocketId, roomName, fromUsername }) => {
+
+  // Send invite to target user
+  socket.to(toSocketId).emit("room-invite", {
+    roomName,
+    fromUsername,
+    fromSocketId: socket.id
+  });
+
+  // Notify sender that invite was sent
+  socket.emit("invite-sent", {
+    roomName,
+    toSocketId
+  });
+
+});
+
+
+
+
+socket.on("accept-room-invite", ({ roomName, fromSocketId }) => {
+
+  socket.join(roomName);
+
+  socket.emit("room-joined", roomName);
+
+  // Notify sender that invite was accepted
+  socket.to(fromSocketId).emit("invite-accepted", {
+    roomName
+  });
+
+});
+
+
+socket.on("ignore-room-invite", ({ fromSocketId, roomName }) => {
+
+  socket.to(fromSocketId).emit("invite-ignored", {
+    roomName
+  });
+
+});
+
+
+
+
 
 };
+
+
+
