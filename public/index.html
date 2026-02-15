@@ -4,6 +4,23 @@
   <meta charset="UTF-8" />
   <title>Chat App</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+  .emoji {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background 0.2s;
+  }
+
+  .emoji:hover {
+    background: #f3f4f6;
+  }
+</style>
+
 </head>
 
 <body class="bg-gradient-to-br from-pink-500 via-red-500 to-yellow-500 h-screen flex items-center justify-center">
@@ -92,9 +109,58 @@
 
 
 
-        <input id="msg"
-          class="flex-1 border border-gray-300 rounded-full px-4 py-2 focus:ring-2 focus:ring-pink-400 outline-none shadow-sm"
-          placeholder="Type a message..." />
+        <div class="relative flex items-center gap-2">
+
+  <!-- Emoji Button -->
+  <button id="emojiBtn"
+    class="text-xl px-2 hover:scale-110 transition">
+    😊
+  </button>
+
+<textarea id="msg"
+  rows="1"
+  class="flex-1 border rounded-lg px-3 py-2 resize-none 
+         outline-none focus:ring-2 focus:ring-pink-400
+         leading-5 overflow-hidden"
+  placeholder="Type a message..."></textarea>
+
+
+
+
+
+  <!-- Emoji Picker Panel -->
+<div id="emojiPicker"
+  class="hidden absolute bottom-14 left-0 bg-white shadow-lg rounded-xl p-3 w-56 grid grid-cols-5 gap-3 text-2xl">
+
+  <span class="emoji">😀</span>
+  <span class="emoji">😂</span>
+  <span class="emoji">😍</span>
+  <span class="emoji">😎</span>
+  <span class="emoji">😢</span>
+
+  <span class="emoji">😡</span>
+  <span class="emoji">👍</span>
+  <span class="emoji">👏</span>
+  <span class="emoji">🎉</span>
+  <span class="emoji">❤️</span>
+
+  <span class="emoji">🔥</span>
+  <span class="emoji">💯</span>
+  <span class="emoji">😴</span>
+  <span class="emoji">🤯</span>
+  <span class="emoji">🥳</span>
+
+  <span class="emoji">🤝</span>
+  <span class="emoji">👀</span>
+  <span class="emoji">✨</span>
+  <span class="emoji">🙌</span>
+  <span class="emoji">🎯</span>
+
+</div>
+
+
+</div>
+
 
         <button onclick="send()"
           class="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white px-5 py-2 rounded-full shadow-md transition">

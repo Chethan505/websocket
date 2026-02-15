@@ -26,6 +26,26 @@ const roomList = document.getElementById("roomList");
 const userList = document.getElementById("userList");
 const fileInput = document.getElementById("fileInput");
 const filePreview = document.getElementById("filePreview");
+const emojiBtn = document.getElementById("emojiBtn");
+const emojiPicker = document.getElementById("emojiPicker");
+const msgInput = document.getElementById("msg");
+
+
+msgInput.addEventListener("keydown", function (e) {
+
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();  // stop new line
+    send();              // send message
+  }
+
+});
+
+msgInput.addEventListener("input", function () {
+  this.style.height = "auto";
+  this.style.height = this.scrollHeight + "px";
+});
+
+
 
 let selectedFile = null;
 filePreview.innerText = "";
@@ -83,7 +103,7 @@ function addRoom(room) {
 async function send() {
 
   const textInput = document.getElementById("msg");
-  const text = textInput.value.trim();  // ✅ trimmed
+  const text = textInput.value.trim();
 
   // ===== FILE CASE =====
   if (selectedFile) {
@@ -116,7 +136,6 @@ async function send() {
       console.error("Upload error:", err);
     }
 
-    // ✅ Reset everything properly
     selectedFile = null;
     fileInput.value = "";
     filePreview.innerText = "";
@@ -133,8 +152,10 @@ async function send() {
     });
 
     textInput.value = "";
+    textInput.style.height = "auto";
   }
 }
+
 
 /* ===========================
    FILE SELECTION
@@ -147,6 +168,30 @@ fileInput.addEventListener("change", () => {
   selectedFile = file;
   filePreview.innerText = `Selected: ${file.name}`;
 });
+
+// Toggle emoji picker
+emojiBtn.addEventListener("click", () => {
+  emojiPicker.classList.toggle("hidden");
+});
+
+// Insert emoji into input
+emojiPicker.addEventListener("click", (e) => {
+
+  if (e.target.classList.contains("emoji")) {
+    msgInput.value += e.target.textContent;
+    msgInput.focus();
+  }
+
+});
+
+
+// Close picker when clicking outside
+document.addEventListener("click", (e) => {
+  if (!emojiBtn.contains(e.target) && !emojiPicker.contains(e.target)) {
+    emojiPicker.classList.add("hidden");
+  }
+});
+
 
 /* ===========================
    SOCKET LISTENERS
@@ -192,7 +237,10 @@ function renderMessage(msg) {
   `;
 
   // ===== Message Content =====
-  let content = `<b>${msg.sender}</b><br>`;
+const displayName = isMe ? "You" : msg.sender;
+
+let content = `<b>${displayName}</b><br>`;
+
 
   if (msg.type === "image") {
     content += `<img src="${msg.fileUrl}" class="rounded mt-1 max-h-40">`;
