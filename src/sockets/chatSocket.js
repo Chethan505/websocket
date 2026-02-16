@@ -2,6 +2,7 @@ const Message = require("../models/Message");
 
 const onlineUsers = {};
 const mutedUsers = new Set();
+const rooms = {};
 
 module.exports = (io, socket) => {
 
@@ -26,13 +27,36 @@ socket.on("join", ({ username, role }) => {
 });
 
 
-  // JOIN ROOM
-  socket.on("join-room", async (room) => {
-    socket.join(room);
+socket.on("disconnect", () => {
 
-    const history = await Message.find({ room });
-    socket.emit("room-history", history);
-  });
+  delete onlineUsers[socket.id];
+
+  io.emit("online-users",
+    Object.entries(onlineUsers).map(([id, user]) => ({
+      socketId: id,
+      username: user.username,
+      role: user.role
+    }))
+  );
+
+});
+
+
+
+
+  // JOIN ROOM
+ socket.on("join-room", async (data) => {
+
+  const room = typeof data === "string" ? data : data.roomName;
+
+  if (!room) return;
+
+  socket.join(room);
+
+  const history = await Message.find({ room });
+  socket.emit("room-history", history);
+});
+
 
   // LEAVE ROOM
   socket.on("leave-room", (room) => {
@@ -53,18 +77,7 @@ socket.on("join", ({ username, role }) => {
     io.to(room).emit("room-message", msg);
   });
 
-  // DISCONNECT
-  socket.on("disconnect", () => {
-    delete onlineUsers[socket.id];
-
-    io.emit(
-      "online-users",
-      Object.entries(onlineUsers).map(([id, name]) => ({
-        socketId: id,
-        username: name,
-      }))
-    );
-  });
+ 
 
   // FILE MESSAGE
 socket.on("file-message", async (data) => {
@@ -147,6 +160,54 @@ socket.on("file-message", async (data) => {
 // PRIVATE CHAT REQUEST
 // =========================
 
+socket.on("create-room", ({ roomName }) => {
+
+  if (!roomName) return;
+
+  const trimmed = roomName.trim();
+
+  // Prevent creating "global"
+  if (trimmed.toLowerCase() === "global") {
+    socket.emit("room-error", "Cannot create room named Global");
+    return;
+  }
+
+  // Check duplicate (case insensitive)
+  const exists = Object.keys(rooms).find(
+    room => room.toLowerCase() === trimmed.toLowerCase()
+  );
+
+  if (exists) {
+    socket.emit("room-error", "Room already exists with this name");
+    return;
+  }
+
+  rooms[trimmed] = {
+    owner: socket.id,
+    members: new Set([socket.id])
+  };
+
+  socket.join(trimmed);
+
+  socket.emit("room-created", { roomName: trimmed });
+});
+
+
+
+socket.on("delete-room", async (roomName) => {
+  if (!roomName || roomName === "global") return;
+  if (!rooms[roomName]) return;
+  await Message.deleteMany({ room: roomName });
+  delete rooms[roomName];
+  io.to(roomName).emit("room-deleted", roomName);
+
+});
+
+
+
+
+
+
 socket.on("private-chat-request", ({ toSocketId, fromUsername }) => {
   socket.to(toSocketId).emit("private-chat-request", {
     fromUsername,
@@ -164,11 +225,19 @@ socket.on("private-chat-accept", ({ fromSocketId, roomName }) => {
 
 socket.on("delete-room", async (roomName) => {
 
-  if (roomName === "global") return;
+  if (!roomName || roomName === "global") return;
 
+  // Delete messages
   await Message.deleteMany({ room: roomName });
 
+  // Delete room from memory
+  if (rooms[roomName]) {
+    delete rooms[roomName];
+  }
+
+  // Notify everyone in that room
   io.to(roomName).emit("room-deleted", roomName);
+
 });
 
 
