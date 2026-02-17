@@ -35,12 +35,7 @@ const emojiBtn = document.getElementById("emojiBtn");
 const emojiPicker = document.getElementById("emojiPicker");
 const msgInput = document.getElementById("msg");
 const roomInput = document.getElementById("roomInput");
-const form = document.querySelector("form");
-if (form) {
-  form.addEventListener("submit", function(e) {
-    e.preventDefault();
-  });
-}
+document.getElementById("logoutBtn").addEventListener("click", logout);
 
 
 let selectedFile = null;
@@ -105,6 +100,8 @@ function switchRoom(room) {
 // ADD ROOM
 // =========================
 function addRoom(room) {
+
+  if (!room) return;
 
   const existing = Array.from(roomList.children).some(
     li => li.innerText.trim() === room
@@ -188,6 +185,9 @@ async function send() {
   }
 }
 
+// =========================
+// DELETE ROOM
+// =========================
 function deleteRoom() {
 
   if (currentRoom === "global") {
@@ -201,6 +201,19 @@ function deleteRoom() {
   socket.emit("delete-room", currentRoom);
 }
 
+// =========================
+// LOGOUT
+// =========================
+function logout() {
+
+  socket.emit("user-logout");
+
+  localStorage.clear();
+
+  socket.disconnect();
+
+  window.location.href = "/login.html";
+}
 
 // =========================
 // FILE SELECTION
@@ -214,40 +227,12 @@ fileInput.addEventListener("change", () => {
 });
 
 // =========================
-// EMOJI PANEL
+// ROOM LISTENERS
 // =========================
-emojiBtn.addEventListener("click", () => {
-  emojiPicker.classList.toggle("hidden");
-});
-
-emojiPicker.addEventListener("click", (e) => {
-  if (e.target.classList.contains("emoji")) {
-    msgInput.value += e.target.textContent;
-    msgInput.focus();
-  }
-});
-
-document.addEventListener("click", (e) => {
-  if (!emojiBtn.contains(e.target) && !emojiPicker.contains(e.target)) {
-    emojiPicker.classList.add("hidden");
-  }
-});
-
-// =========================
-// SOCKET LISTENERS
-// =========================
-socket.on("room-history", (msgs) => {
-  msgs.forEach(renderMessage);
-});
-
-socket.on("file-message", renderMessage);
-socket.on("room-message", renderMessage);
-
 socket.on("room-created", ({ roomName }) => {
   addRoom(roomName);
   switchRoom(roomName);
 });
-
 
 socket.on("room-joined", (roomName) => {
   addRoom(roomName);
@@ -256,25 +241,70 @@ socket.on("room-joined", (roomName) => {
 
 socket.on("room-deleted", (roomName) => {
 
-  // Remove room from sidebar
   const items = document.querySelectorAll("#roomList li");
 
   items.forEach(li => {
-    if (li.innerText.trim().includes(roomName)) {
+    if (li.innerText.trim() === roomName) {
       li.remove();
     }
   });
 
-  // If currently inside deleted room → go to global
   if (currentRoom === roomName) {
     currentRoom = "global";
     socket.emit("join-room", "global");
     roomTitle.innerText = "Room: global";
     messages.innerHTML = "";
   }
+});
+
+// 🔥 FIXED BLOCK (only correction made)
+socket.on("existing-rooms", (roomsFromServer) => {
+
+  if (!Array.isArray(roomsFromServer)) return;
+
+  roomsFromServer.forEach(room => {
+    addRoom(room);
+  });
 
 });
 
+// =========================
+// INVITES
+// =========================
+socket.on("room-invite", ({ roomName, fromUsername, fromSocketId }) => {
+
+  const accept = confirm(
+    `${fromUsername} invited you to join "${roomName}". Accept?`
+  );
+
+  if (accept) {
+
+    socket.emit("accept-room-invite", {
+      roomName,
+      fromSocketId
+    });
+
+  } else {
+
+    socket.emit("ignore-room-invite", {
+      roomName,
+      fromSocketId
+    });
+
+  }
+});
+
+socket.on("invite-sent", ({ roomName }) => {
+  alert(`Invite sent for "${roomName}"`);
+});
+
+socket.on("invite-accepted", ({ roomName }) => {
+  alert(`User accepted invite to "${roomName}"`);
+});
+
+socket.on("invite-ignored", ({ roomName }) => {
+  alert(`User ignored invite to "${roomName}"`);
+});
 
 // =========================
 // RENDER MESSAGE
@@ -301,6 +331,13 @@ function renderMessage(msg) {
   messages.scrollTop = messages.scrollHeight;
 }
 
+socket.on("room-history", (msgs) => {
+  msgs.forEach(renderMessage);
+});
+
+socket.on("file-message", renderMessage);
+socket.on("room-message", renderMessage);
+
 // =========================
 // ONLINE USERS
 // =========================
@@ -315,9 +352,8 @@ socket.on("online-users", (users) => {
     const li = document.createElement("li");
     li.className = "flex justify-between items-center p-2 hover:bg-pink-50 rounded-lg transition";
 
-    const name = document.createElement("span");
-    name.className = "text-sm font-medium text-gray-700";
-    name.innerText = user.username;
+    const left = document.createElement("span");
+    left.innerText = user.username;
 
     const inviteBtn = document.createElement("button");
     inviteBtn.innerText = "💬";
@@ -337,9 +373,8 @@ socket.on("online-users", (users) => {
       });
     };
 
-    li.appendChild(name);
+    li.appendChild(left);
     li.appendChild(inviteBtn);
     userList.appendChild(li);
   });
 });
-

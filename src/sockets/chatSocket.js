@@ -6,65 +6,89 @@ const rooms = {};
 
 module.exports = (io, socket) => {
 
+  // =========================
   // USER JOIN
-socket.on("join", ({ username, role }) => {
+  // =========================
+  socket.on("join", ({ username, role }) => {
 
-  onlineUsers[socket.id] = {
-    username,
-    role
-  };
+    // 🔥 STORE USERNAME ON SOCKET (CRITICAL FIX)
+    socket.username = username;
+    socket.userRole = role;
 
-  socket.userRole = role;
-  socket.join("global");
+    // Disconnect previous session
+    for (const id in onlineUsers) {
+      if (onlineUsers[id].username === username) {
+        io.sockets.sockets.get(id)?.disconnect(true);
+      }
+    }
 
-  io.emit("online-users",
-    Object.entries(onlineUsers).map(([id, user]) => ({
-      socketId: id,
-      username: user.username,
-      role: user.role
-    }))
-  );
-});
+    onlineUsers[socket.id] = { username, role };
 
+    io.emit("online-users",
+      Object.entries(onlineUsers).map(([id, user]) => ({
+        socketId: id,
+        username: user.username,
+        role: user.role
+      }))
+    );
 
-socket.on("disconnect", () => {
+    // 🔥 SEND ONLY ROOMS THIS USER BELONGS TO
+    const userRooms = Object.keys(rooms).filter(roomName =>
+      rooms[roomName].members.has(socket.username)
+    );
 
-  delete onlineUsers[socket.id];
-
-  io.emit("online-users",
-    Object.entries(onlineUsers).map(([id, user]) => ({
-      socketId: id,
-      username: user.username,
-      role: user.role
-    }))
-  );
-
-});
+    socket.emit("existing-rooms", userRooms);
+  });
 
 
+  // =========================
+  // DISCONNECT
+  // =========================
+  socket.on("disconnect", () => {
+
+    delete onlineUsers[socket.id];
+
+    io.emit("online-users",
+      Object.entries(onlineUsers).map(([id, user]) => ({
+        socketId: id,
+        username: user.username,
+        role: user.role
+      }))
+    );
+  });
 
 
+  // =========================
   // JOIN ROOM
- socket.on("join-room", async (data) => {
+  // =========================
+  socket.on("join-room", async (data) => {
 
-  const room = typeof data === "string" ? data : data.roomName;
+    if (!data) return;
 
-  if (!room) return;
+    const room = typeof data === "string" ? data : data.roomName;
 
-  socket.join(room);
+    if (!room) return;
 
-  const history = await Message.find({ room });
-  socket.emit("room-history", history);
-});
+    socket.join(room);
+
+    const history = await Message.find({ room });
+    socket.emit("room-history", history);
+  });
 
 
+  // =========================
   // LEAVE ROOM
+  // =========================
   socket.on("leave-room", (room) => {
     socket.leave(room);
   });
 
+
+  // =========================
   // ROOM MESSAGE
+  // =========================
   socket.on("room-message", async ({ room, sender, message }) => {
+
     if (mutedUsers.has(socket.id)) return;
 
     const msg = await Message.create({
@@ -77,217 +101,184 @@ socket.on("disconnect", () => {
     io.to(room).emit("room-message", msg);
   });
 
- 
 
+  // =========================
   // FILE MESSAGE
-socket.on("file-message", async (data) => {
+  // =========================
+  socket.on("file-message", async (data) => {
 
-  if (mutedUsers.has(socket.id)) {
-    socket.emit("muted");
-    return;
-  }
-
-  const msg = await Message.create({
-    sender: data.sender,
-    type: data.type,
-    fileUrl: data.fileUrl,
-    fileName: data.fileName,
-    room: data.room || "global",
-    isPrivate: false
-  });
-
-  io.to(data.room).emit("file-message", msg);
-});
-
-
-  // TYPING
-  socket.on("typing", ({ username, isPrivate, toSocketId }) => {
-    if (isPrivate && toSocketId) {
-      socket.to(toSocketId).emit("typing", { username });
-    } else {
-      socket.broadcast.emit("typing", { username });
+    if (mutedUsers.has(socket.id)) {
+      socket.emit("muted");
+      return;
     }
-  });
 
-  socket.on("stop-typing", ({ isPrivate, toSocketId }) => {
-    if (isPrivate && toSocketId) {
-      socket.to(toSocketId).emit("stop-typing");
-    } else {
-      socket.broadcast.emit("stop-typing");
-    }
-  });
-
-  // MESSAGE SEEN
-  socket.on("message-seen", async (messageId) => {
-    await Message.findByIdAndUpdate(messageId, {
-      status: "seen",
+    const msg = await Message.create({
+      sender: data.sender,
+      type: data.type,
+      fileUrl: data.fileUrl,
+      fileName: data.fileName,
+      room: data.room || "global",
+      isPrivate: false
     });
 
-    socket.broadcast.emit("message-seen", messageId);
+    io.to(data.room).emit("file-message", msg);
   });
 
-  // ADMIN CONTROLS
-  socket.on("mute-user", ({ targetSocketId }) => {
-    mutedUsers.add(targetSocketId);
-    socket.to(targetSocketId).emit("muted");
+
+  // =========================
+  // DELETE MESSAGE
+  // =========================
+  socket.on("delete-message", async ({ messageId, username }) => {
+
+    try {
+      const message = await Message.findById(messageId);
+      if (!message) return;
+
+      if (
+        message.sender === username ||
+        socket.userRole === "admin" ||
+        socket.userRole === "moderator"
+      ) {
+        await Message.findByIdAndDelete(messageId);
+        io.to(message.room).emit("delete-message", messageId);
+      }
+
+    } catch (err) {
+      console.error("Delete error:", err);
+    }
   });
 
-  socket.on("kick-user", ({ targetSocketId }) => {
-    socket.to(targetSocketId).emit("kicked");
-  });
 
- socket.on("delete-message", async ({ messageId, username }) => {
+  // =========================
+  // CREATE ROOM
+  // =========================
+  socket.on("create-room", ({ roomName }) => {
 
-  try {
-    const message = await Message.findById(messageId);
-    if (!message) return;
+    if (!roomName) return;
 
-    // Allow if user owns message OR admin
-    if (message.sender === username || socket.userRole === "admin" || socket.userRole === "moderator") {
+    const trimmed = roomName.trim();
 
-      await Message.findByIdAndDelete(messageId);
-
-      io.to(message.room).emit("delete-message", messageId);
+    if (trimmed.toLowerCase() === "global") {
+      socket.emit("room-error", "Cannot create room named Global");
+      return;
     }
 
-  } catch (err) {
-    console.error("Delete error:", err);
-  }
+    const exists = Object.keys(rooms).some(
+      room => room.toLowerCase() === trimmed.toLowerCase()
+    );
 
-});
+    if (exists) {
+      socket.emit("room-error", "Room already exists with this name");
+      return;
+    }
 
-// =========================
-// PRIVATE CHAT REQUEST
-// =========================
+    // 🔥 FIX: use trimmed key + username
+    rooms[trimmed] = {
+      owner: socket.username,
+      members: new Set([socket.username])
+    };
 
-socket.on("create-room", ({ roomName }) => {
+    socket.join(trimmed);
 
-  if (!roomName) return;
-
-  const trimmed = roomName.trim();
-
-  // Prevent creating "global"
-  if (trimmed.toLowerCase() === "global") {
-    socket.emit("room-error", "Cannot create room named Global");
-    return;
-  }
-
-  // Check duplicate (case insensitive)
-  const exists = Object.keys(rooms).find(
-    room => room.toLowerCase() === trimmed.toLowerCase()
-  );
-
-  if (exists) {
-    socket.emit("room-error", "Room already exists with this name");
-    return;
-  }
-
-  rooms[trimmed] = {
-    owner: socket.id,
-    members: new Set([socket.id])
-  };
-
-  socket.join(trimmed);
-
-  socket.emit("room-created", { roomName: trimmed });
-});
-
-
-
-socket.on("delete-room", async (roomName) => {
-  if (!roomName || roomName === "global") return;
-  if (!rooms[roomName]) return;
-  await Message.deleteMany({ room: roomName });
-  delete rooms[roomName];
-  io.to(roomName).emit("room-deleted", roomName);
-
-});
-
-
-
-
-
-
-socket.on("private-chat-request", ({ toSocketId, fromUsername }) => {
-  socket.to(toSocketId).emit("private-chat-request", {
-    fromUsername,
-    fromSocketId: socket.id
+    socket.emit("room-created", { roomName: trimmed });
   });
-});
 
-socket.on("private-chat-accept", ({ fromSocketId, roomName }) => {
 
-  socket.join(roomName);
-  io.sockets.sockets.get(fromSocketId)?.join(roomName);
+  // =========================
+  // DELETE ROOM (OWNER ONLY)
+  // =========================
+  socket.on("delete-room", async (roomName) => {
 
-  io.to(roomName).emit("private-room-created", roomName);
-});
+    if (!roomName || roomName === "global") return;
 
-socket.on("delete-room", async (roomName) => {
+    if (!rooms[roomName]) return;
 
-  if (!roomName || roomName === "global") return;
+    // 🔥 OWNER CHECK FIX
+    if (rooms[roomName].owner !== socket.username) {
+      socket.emit("room-error", "Only the room owner can delete this room");
+      return;
+    }
 
-  // Delete messages
-  await Message.deleteMany({ room: roomName });
+    await Message.deleteMany({ room: roomName });
 
-  // Delete room from memory
-  if (rooms[roomName]) {
     delete rooms[roomName];
-  }
 
-  // Notify everyone in that room
-  io.to(roomName).emit("room-deleted", roomName);
-
-});
-
-
-socket.on("room-invite", ({ toSocketId, roomName, fromUsername }) => {
-
-  // Send invite to target user
-  socket.to(toSocketId).emit("room-invite", {
-    roomName,
-    fromUsername,
-    fromSocketId: socket.id
+    io.to(roomName).emit("room-deleted", roomName);
   });
 
-  // Notify sender that invite was sent
-  socket.emit("invite-sent", {
-    roomName,
-    toSocketId
+
+  // =========================
+  // ROOM INVITE
+  // =========================
+  socket.on("room-invite", ({ toSocketId, roomName, fromUsername }) => {
+
+    if (!toSocketId || !roomName) return;
+
+    socket.to(toSocketId).emit("room-invite", {
+      roomName,
+      fromUsername,
+      fromSocketId: socket.id
+    });
+
+    socket.emit("invite-sent", { roomName });
   });
 
-});
 
+  // =========================
+  // ACCEPT ROOM INVITE
+  // =========================
+  socket.on("accept-room-invite", ({ roomName }) => {
 
+    if (!rooms[roomName]) return;
 
+    rooms[roomName].members.add(socket.username);
 
-socket.on("accept-room-invite", ({ roomName, fromSocketId }) => {
+    socket.join(roomName);
 
-  socket.join(roomName);
-
-  socket.emit("room-joined", roomName);
-
-  // Notify sender that invite was accepted
-  socket.to(fromSocketId).emit("invite-accepted", {
-    roomName
+    socket.emit("room-joined", roomName);
   });
 
-});
 
+  // =========================
+  // LEAVE ROOM (NOT DELETE)
+  // =========================
+  socket.on("leave-room-permanently", (roomName) => {
 
-socket.on("ignore-room-invite", ({ fromSocketId, roomName }) => {
+    if (!rooms[roomName]) return;
 
-  socket.to(fromSocketId).emit("invite-ignored", {
-    roomName
+    rooms[roomName].members.delete(socket.username);
+
+    socket.leave(roomName);
+
+    socket.emit("room-left", roomName);
   });
 
-});
 
+  // =========================
+  // USER LOGOUT (DELETE OWN ROOMS ONLY)
+  // =========================
+  socket.on("user-logout", () => {
 
+    for (const roomName in rooms) {
 
+      // 🔥 FIX: compare with username not socket.id
+      if (rooms[roomName].owner === socket.username) {
 
+        delete rooms[roomName];
+
+        io.emit("room-deleted", roomName);
+      }
+    }
+
+    delete onlineUsers[socket.id];
+
+    io.emit("online-users",
+      Object.entries(onlineUsers).map(([id, user]) => ({
+        socketId: id,
+        username: user.username,
+        role: user.role
+      }))
+    );
+  });
 
 };
-
-
-
