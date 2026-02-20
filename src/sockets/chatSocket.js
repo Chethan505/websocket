@@ -242,16 +242,18 @@ module.exports = (io, socket) => {
   // =========================
   // LEAVE ROOM (NOT DELETE)
   // =========================
-  socket.on("leave-room-permanently", (roomName) => {
+ socket.on("leave-room-permanently", (roomName) => {
 
-    if (!rooms[roomName]) return;
+  if (!rooms[roomName]) return;
 
-    rooms[roomName].members.delete(socket.username);
+  rooms[roomName].members.delete(socket.username);
 
-    socket.leave(roomName);
+  socket.leave(roomName);
 
-    socket.emit("room-left", roomName);
-  });
+  socket.emit("room-left", roomName);
+
+});
+
 
 
   // =========================
