@@ -13,6 +13,12 @@ if (!token || !username) {
 let currentRoom = "global";
 
 const globalRoomCache = [];
+const pendingInvites = new Set();
+document.addEventListener("click", () => {
+  document.querySelectorAll("[data-msg-menu]").forEach(m => {
+    m.style.display = "none";
+  });
+});
 
 // =========================
 // INITIAL JOIN
@@ -318,6 +324,11 @@ socket.on("existing-rooms", (roomsFromServer) => {
 
 });
 
+
+socket.on("delete-message", (messageId) => {
+  const el = document.getElementById(messageId);
+  if (el) el.remove();
+});
 // =========================
 // INVITES
 // =========================
@@ -344,16 +355,17 @@ socket.on("room-invite", ({ roomName, fromUsername, fromSocketId }) => {
   }
 });
 
-socket.on("invite-sent", ({ roomName }) => {
-  alert(`Invite sent for "${roomName}"`);
-});
 
-socket.on("invite-accepted", ({ roomName }) => {
-  alert(`User accepted invite to "${roomName}"`);
+
+socket.on("invite-accepted", ({ roomName, username }) => {
+  pendingInvites.clear();
+
+  alert(`✅ ${username || "User"} accepted your invite to "${roomName}"`);
 });
 
 socket.on("invite-ignored", ({ roomName }) => {
-  alert(`User ignored invite to "${roomName}"`);
+  pendingInvites.clear(); // stop waiting
+  alert(`❌ User declined the invite to "${roomName}"`);
 });
 
 // =========================
@@ -373,16 +385,24 @@ if (msg.room && msg.room !== currentRoom) {
   wrapper.className = `flex ${isMe ? "justify-end" : "justify-start"} my-2`;
 
   const bubble = document.createElement("div");
+  bubble.style.pointerEvents = "auto";
+
+  bubble.style.position = "relative";
   bubble.className = `
     relative max-w-xs px-4 py-2 rounded-lg text-sm shadow
     ${isMe ? "bg-green-500 text-white" : "bg-white text-gray-800"}
   `;
+
+
+
 
   const displayName = isMe ? "You" : (msg.sender || "User");
 
   // ✅ TEXT MESSAGE (safe check)
   if (!msg.type || msg.type === "text") {
     bubble.innerHTML = `<b>${displayName}</b><br>${msg.message || ""}`;
+    bubble.style.overflow = "visible";
+
   }
 
   // ✅ IMAGE
@@ -410,12 +430,81 @@ if (msg.room && msg.room !== currentRoom) {
       </a>
     `;
   }
-
+ 
   // ❗ FALLBACK (VERY IMPORTANT)
   else {
     bubble.innerHTML = `<b>${displayName}</b><br>Unsupported message`;
     console.warn("Unknown message type:", msg.type);
   }
+// =========================
+// 🗑 THREE DOT MENU (SAFE)
+// =========================
+const menuBtn = document.createElement("button");
+menuBtn.innerText = "⋮";
+menuBtn.style.position = "absolute";
+menuBtn.style.top = "4px";
+menuBtn.style.right = "6px";
+menuBtn.style.fontSize = "14px";
+menuBtn.style.cursor = "pointer";
+menuBtn.style.zIndex = "9999";
+menuBtn.style.background = "transparent";
+menuBtn.style.border = "none";
+
+bubble.appendChild(menuBtn);
+
+const menu = document.createElement("div");
+menu.style.position = "absolute";
+menu.style.top = "22px";
+menu.style.right = "0";
+menu.style.background = "#ffffff";
+menu.style.border = "1px solid #ddd";
+menu.style.borderRadius = "6px";
+menu.style.boxShadow = "0 2px 6px rgba(0,0,0,0.15)";
+menu.style.fontSize = "13px";
+menu.style.display = "none";
+menu.style.zIndex = "10000";
+menu.style.minWidth = "150px";
+menu.style.color = "#111"; // 🔥 VERY IMPORTANT
+
+bubble.appendChild(menu);
+
+// toggle
+menuBtn.onclick = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  menu.style.display = menu.style.display === "none" ? "block" : "none";
+};
+
+// ✅ Delete for me (ALWAYS)
+const deleteMe = document.createElement("div");
+deleteMe.innerText = "Delete for me";
+deleteMe.style.padding = "8px 12px";
+deleteMe.style.cursor = "pointer";
+deleteMe.style.color = "#111";
+
+deleteMe.onclick = () => wrapper.remove();
+
+menu.appendChild(deleteMe);
+
+// ✅ Delete for everyone (ONLY sender)
+if (msg.sender === username) {
+  const deleteAll = document.createElement("div");
+  deleteAll.innerText = "Delete for everyone";
+  deleteAll.style.padding = "8px 12px";
+  deleteAll.style.cursor = "pointer";
+  deleteAll.style.color = "red";
+
+  deleteAll.onclick = () => {
+    socket.emit("delete-message", {
+      messageId: msg._id,
+      username
+    });
+  };
+
+  menu.appendChild(deleteAll);
+}
+
+console.log("menu children:", menu.children.length);
 
   wrapper.appendChild(bubble);
 
@@ -488,19 +577,25 @@ socket.on("online-users", (users) => {
     inviteBtn.innerText = "💬";
     inviteBtn.className = "text-xs text-blue-500 hover:text-blue-700";
 
-    inviteBtn.onclick = () => {
+   inviteBtn.onclick = () => {
 
-      if (currentRoom === "global") {
-        alert("Cannot invite users to Global room");
-        return;
-      }
+  if (currentRoom === "global") {
+    alert("Cannot invite users to Global room");
+    return;
+  }
 
-      socket.emit("room-invite", {
-        toSocketId: user.socketId,
-        roomName: currentRoom,
-        fromUsername: username
-      });
-    };
+  // 🟢 mark waiting
+  pendingInvites.add(user.socketId);
+
+  socket.emit("room-invite", {
+    toSocketId: user.socketId,
+    roomName: currentRoom,
+    fromUsername: username
+  });
+
+  // 🟢 optional UX popup
+  alert(`Invite sent to ${user.username}. Waiting for response...`);
+};
 
     li.appendChild(left);
     li.appendChild(inviteBtn);

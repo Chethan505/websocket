@@ -227,17 +227,33 @@ module.exports = (io, socket) => {
   // =========================
   // ACCEPT ROOM INVITE
   // =========================
-  socket.on("accept-room-invite", ({ roomName }) => {
+socket.on("accept-room-invite", ({ roomName, fromSocketId }) => {
 
-    if (!rooms[roomName]) return;
+  if (!rooms[roomName]) return;
 
-    rooms[roomName].members.add(socket.username);
+  rooms[roomName].members.add(socket.username);
 
-    socket.join(roomName);
+  socket.join(roomName);
 
-    socket.emit("room-joined", roomName);
-  });
+  // ✅ notify inviter (User A)
+  if (fromSocketId) {
+    socket.to(fromSocketId).emit("invite-accepted", {
+      roomName,
+      username: socket.username
+    });
+  }
 
+  // ✅ notify accepter (User B)
+  socket.emit("room-joined", roomName);
+});
+
+  // =========================
+  // IGNORE REQUEST
+  // =========================
+
+  socket.on("ignore-room-invite", ({ roomName, fromSocketId }) => {
+  socket.to(fromSocketId).emit("invite-ignored", { roomName });
+});
 
   // =========================
   // LEAVE ROOM (NOT DELETE)
