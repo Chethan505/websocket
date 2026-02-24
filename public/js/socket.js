@@ -18,6 +18,12 @@ document.addEventListener("click", () => {
   document.querySelectorAll("[data-msg-menu]").forEach(m => {
     m.style.display = "none";
   });
+  });
+
+  document.addEventListener("click", () => {
+  document.querySelectorAll(".msg-menu").forEach(m => {
+    m.style.display = "none";
+  });
 });
 
 // =========================
@@ -441,30 +447,40 @@ if (msg.room && msg.room !== currentRoom) {
 // =========================
 const menuBtn = document.createElement("button");
 menuBtn.innerText = "⋮";
-menuBtn.style.position = "absolute";
-menuBtn.style.top = "4px";
-menuBtn.style.right = "6px";
-menuBtn.style.fontSize = "14px";
-menuBtn.style.cursor = "pointer";
-menuBtn.style.zIndex = "9999";
-menuBtn.style.background = "transparent";
-menuBtn.style.border = "none";
+menuBtn.style.opacity = "0.65";
+menuBtn.style.padding = "2px 6px";
+menuBtn.style.borderRadius = "6px";
+menuBtn.style.transition = "all 0.15s ease";
+
+menuBtn.onmouseenter = () => {
+  menuBtn.style.background = "rgba(255,255,255,0.25)";
+  menuBtn.style.opacity = "1";
+};
+
+menuBtn.onmouseleave = () => {
+  menuBtn.style.background = "transparent";
+  menuBtn.style.opacity = "0.65";
+};
 
 bubble.appendChild(menuBtn);
+const isDownloadable = !!msg.fileUrl;
+const isGlobalRoom = msg.room === "global";
 
 const menu = document.createElement("div");
+menu.classList.add("msg-menu");
 menu.style.position = "absolute";
 menu.style.top = "22px";
 menu.style.right = "0";
-menu.style.background = "#ffffff";
-menu.style.border = "1px solid #ddd";
-menu.style.borderRadius = "6px";
-menu.style.boxShadow = "0 2px 6px rgba(0,0,0,0.15)";
+menu.style.background = "#fff0f6"; // 🌸 light pink theme
+menu.style.border = "1px solid #fbcfe8";
+menu.style.borderRadius = "12px";
+menu.style.boxShadow = "0 10px 25px rgba(236, 72, 153, 0.18)";
 menu.style.fontSize = "13px";
 menu.style.display = "none";
 menu.style.zIndex = "10000";
-menu.style.minWidth = "150px";
-menu.style.color = "#111"; // 🔥 VERY IMPORTANT
+menu.style.minWidth = "170px";
+menu.style.padding = "6px 0";
+menu.style.backdropFilter = "blur(6px)";
 
 bubble.appendChild(menu);
 
@@ -472,37 +488,85 @@ bubble.appendChild(menu);
 menuBtn.onclick = (e) => {
   e.preventDefault();
   e.stopPropagation();
+
+  // 🔴 close all other menus first
+  document.querySelectorAll(".msg-menu").forEach(m => {
+    if (m !== menu) m.style.display = "none";
+  });
+
+  // 🔁 toggle this one
   menu.style.display = menu.style.display === "none" ? "block" : "none";
 };
 
-// ✅ Delete for me (ALWAYS)
-const deleteMe = document.createElement("div");
-deleteMe.innerText = "Delete for me";
-deleteMe.style.padding = "8px 12px";
-deleteMe.style.cursor = "pointer";
-deleteMe.style.color = "#111";
+// =========================
+// ⬇️ DOWNLOAD (GLOBAL ONLY)
+// =========================
+if (isDownloadable && isGlobalRoom) {
+  const downloadItem = document.createElement("div");
+  downloadItem.innerText =
+  msg.type === "image"
+    ? "Download image"
+    : msg.type === "audio"
+    ? "Download audio"
+    : "Download file";
+downloadItem.style.padding = "10px 14px";
+downloadItem.style.cursor = "pointer";
+downloadItem.style.color = "#9d174d";
+downloadItem.style.fontWeight = "500";
+downloadItem.style.transition = "all 0.15s ease";
 
-deleteMe.onclick = () => wrapper.remove();
+downloadItem.onmouseenter = () => {
+  downloadItem.style.background = "#ffe4f1";
+};
 
-menu.appendChild(deleteMe);
+downloadItem.onmouseleave = () => {
+  downloadItem.style.background = "transparent";
+};
 
-// ✅ Delete for everyone (ONLY sender)
-if (msg.sender === username) {
-  const deleteAll = document.createElement("div");
-  deleteAll.innerText = "Delete for everyone";
-  deleteAll.style.padding = "8px 12px";
-  deleteAll.style.cursor = "pointer";
-  deleteAll.style.color = "red";
+  downloadItem.onclick = () => {
+    menu.style.display = "none";
 
-  deleteAll.onclick = () => {
-    socket.emit("delete-message", {
-      messageId: msg._id,
-      username
-    });
+    // create temporary link
+    const a = document.createElement("a");
+    a.href = msg.fileUrl;
+    a.download = msg.fileName || "download";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
-  menu.appendChild(deleteAll);
+  menu.appendChild(downloadItem);
 }
+
+
+
+
+
+// =========================
+// 🗑 MAIN DELETE BUTTON
+// =========================
+const deleteBtn = document.createElement("div");
+deleteBtn.innerText = "Delete";
+deleteBtn.style.padding = "10px 14px";
+deleteBtn.style.cursor = "pointer";
+deleteBtn.style.color = "#be185d";
+deleteBtn.style.fontWeight = "500";
+deleteBtn.style.transition = "all 0.15s ease";
+
+deleteBtn.onmouseenter = () => {
+  deleteBtn.style.background = "#ffe4f1";
+};
+
+deleteBtn.onmouseleave = () => {
+  deleteBtn.style.background = "transparent";
+};
+
+deleteBtn.onclick = () => {
+  menu.style.display = "none";
+  openDeleteModal(msg, wrapper);
+};
+
+menu.appendChild(deleteBtn);
 
 console.log("menu children:", menu.children.length);
 
@@ -628,5 +692,139 @@ socket.on("room-left", (roomName) => {
   }
 
 });
+
+function openDeleteModal(msg, wrapper) {
+  // remove old modal if exists
+  const old = document.getElementById("deleteModal");
+  if (old) old.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "deleteModal";
+  modal.style.position = "fixed";
+  modal.style.top = "0";
+  modal.style.left = "0";
+  modal.style.width = "100%";
+  modal.style.height = "100%";
+  modal.style.background = "rgba(0,0,0,0.3)";
+  modal.style.display = "flex";
+  modal.style.alignItems = "center";
+  modal.style.justifyContent = "center";
+  modal.style.zIndex = "99999";
+
+  const box = document.createElement("div");
+box.style.background = "#fff0f6"; // 🌸 theme pink
+box.style.padding = "18px 0";
+box.style.borderRadius = "16px";
+box.style.minWidth = "240px";
+box.style.fontSize = "14px";
+box.style.boxShadow = "0 20px 40px rgba(236, 72, 153, 0.25)";
+box.style.border = "1px solid #fbcfe8";
+box.style.backdropFilter = "blur(8px)";
+box.style.overflow = "hidden";
+
+// =========================
+// 🌸 HEADER ROW
+// =========================
+const header = document.createElement("div");
+header.style.display = "flex";
+header.style.alignItems = "center";
+header.style.justifyContent = "space-between";
+header.style.padding = "12px 18px 8px";
+
+const title = document.createElement("div");
+title.innerText = "Delete message?";
+title.style.fontWeight = "600";
+title.style.color = "#9d174d";
+title.style.fontSize = "13px";
+
+header.appendChild(title);
+
+// ❌ CANCEL (top-right)
+// 🌸 CANCEL (top-right text)
+const cancelTop = document.createElement("button");
+cancelTop.innerText = "Cancel";
+cancelTop.style.border = "none";
+cancelTop.style.background = "transparent";
+cancelTop.style.cursor = "pointer";
+cancelTop.style.fontSize = "13px";
+cancelTop.style.fontWeight = "500";
+cancelTop.style.color = "#be185d";
+cancelTop.style.borderRadius = "6px";
+cancelTop.style.padding = "4px 8px";
+cancelTop.style.transition = "all 0.15s ease";
+
+// hover effect
+cancelTop.onmouseenter = () => {
+  cancelTop.style.background = "#ffe4f1";
+};
+
+cancelTop.onmouseleave = () => {
+  cancelTop.style.background = "transparent";
+};
+
+cancelTop.onclick = () => modal.remove();
+
+header.appendChild(cancelTop);
+box.appendChild(header);
+
+
+
+const divider = document.createElement("div");
+divider.style.height = "1px";
+divider.style.background = "#fbcfe8";
+divider.style.margin = "4px 0 6px";
+
+box.appendChild(divider);
+
+
+function styleModalItem(el, isDanger = false) {
+  el.style.padding = "12px 18px";
+  el.style.cursor = "pointer";
+  el.style.fontWeight = "500";
+  el.style.transition = "all 0.15s ease";
+  el.style.color = isDanger ? "#e11d48" : "#9d174d";
+
+  el.onmouseenter = () => {
+    el.style.background = "#ffe4f1";
+  };
+
+  el.onmouseleave = () => {
+    el.style.background = "transparent";
+  };
+}
+
+  // Delete for me
+  const delMe = document.createElement("div");
+  delMe.innerText = "Delete for me";
+styleModalItem(delMe, false);
+
+  delMe.onclick = () => {
+    wrapper.remove();
+    modal.remove();
+  };
+
+  box.appendChild(delMe);
+
+  // Delete for everyone (ONLY sender)
+  if (msg.sender === username) {
+    const delAll = document.createElement("div");
+    delAll.innerText = "Delete for everyone";
+   styleModalItem(delAll, true);
+
+    delAll.onclick = () => {
+      socket.emit("delete-message", {
+        messageId: msg._id,
+        username
+      });
+      modal.remove();
+    };
+
+    box.appendChild(delAll);
+  }
+
+
+  modal.appendChild(box);
+  document.body.appendChild(modal);
+}
 
 
