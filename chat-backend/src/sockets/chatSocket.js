@@ -103,6 +103,18 @@ module.exports = (io, socket) => {
 
 
   // =========================
+// TYPING
+// =========================
+socket.on("typing", ({ room, username }) => {
+  socket.to(room).emit("typing", username);
+});
+
+socket.on("stop-typing", ({ room }) => {
+  socket.to(room).emit("stop-typing");
+});
+
+
+  // =========================
   // FILE MESSAGE
   // =========================
   socket.on("file-message", async (data) => {
