@@ -1,15 +1,24 @@
 import { useEffect, useRef } from "react";
 import MessageBubble from "./MessageBubble";
 
-function ChatWindow({ messages, currentUser, typingUser }) {
+
+function ChatWindow({ messages, currentUser, typingUser, currentRoom }) {
+  
   const bottomRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typingUser]);
+    
+  }, [messages, typingUser]
+
+);
 
   return (
+    
     <div className="chat-window">
+      <div className="chat-header">
+        #{currentRoom}
+      </div>
       {messages.map((msg, index) => {
         const previousMessage = messages[index - 1];
         const isSameSender =

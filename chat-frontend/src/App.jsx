@@ -8,11 +8,15 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
   const [typingUser, setTypingUser] = useState(null);
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [rooms, setRooms] = useState(["global"]);
+  const [currentRoom, setCurrentRoom] = useState("global");
 
   const currentUser = "testUser"; // define user
 
   useEffect(() => {
     const newSocket = io("http://localhost:8000");
+    
 
     newSocket.on("connect", () => {
       console.log("Connected:", newSocket.id);
@@ -22,7 +26,7 @@ function App() {
         role: "user"
       });
 
-      newSocket.emit("join-room", "global");
+      newSocket.emit("join-room", currentRoom);
     });
 
     newSocket.on("room-history", (history) => {
@@ -40,17 +44,35 @@ function App() {
     newSocket.on("stop-typing", () => {
       setTypingUser(null);
     });
+    newSocket.on("online-users", (users) => {
+      setOnlineUsers(users);
+    });
+
+    newSocket.on("existing-rooms", (roomList) => {
+      if (roomList.length > 0) {
+        setRooms(["global", ...roomList]);
+      }
+    });
+
 
     setSocket(newSocket);
 
     return () => newSocket.disconnect();
   }, []);
 
+  useEffect(() => {
+  if (!socket) return;
+
+  setMessages([]);
+  socket.emit("join-room", currentRoom);
+}, [currentRoom]);
+
   const sendMessage = (text) => {
     if (!socket) return;
+  
 
     socket.emit("room-message", {
-      room: "global",
+      room: currentRoom,
       sender: currentUser,
       message: text
     });
@@ -58,13 +80,18 @@ function App() {
 
   return (
     <div className="app-container">
-      <Sidebar />
+      <Sidebar
+      onlineUsers={onlineUsers}
+      rooms={rooms}
+      currentRoom={currentRoom}
+      setCurrentRoom={setCurrentRoom}/>
 
       <div className="chat-section">
         <ChatWindow
           messages={messages}
           currentUser={currentUser}
           typingUser={typingUser}
+          currentRoom={currentRoom}
         />
 
         <MessageInput
@@ -72,6 +99,7 @@ function App() {
           socket={socket}
           currentUser={currentUser}
         />
+        
       </div>
     </div>
   );

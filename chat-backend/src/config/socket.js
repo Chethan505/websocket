@@ -12,6 +12,9 @@ const setupSocket = (server) => {
   io.on("connection", (socket) => {
     console.log("🟢 User Connected:", socket.id);
     socketLoader(io, socket);
+    socket.on("messageSeen", (messageId) => {
+    io.emit("messageSeen", messageId);
+});
   });
 };
 

@@ -187,3 +187,53 @@ button:focus-visible {
   margin: 10px;
   font-style: italic;
 }
+
+.online-list {
+  margin-top: 15px;
+}
+
+.online-user {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #23a559;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.room-list {
+  margin-bottom: 15px;
+}
+
+.room-item {
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.room-item:hover {
+  background-color: #3a3c42;
+}
+
+.active-room {
+  background-color: #5865f2;
+}
+
+.chat-header {
+  padding: 15px;
+  font-weight: bold;
+  border-bottom: 1px solid #2f3136;
+}
+
+.active-room {
+  background-color: #5865f2;
+  font-weight: bold;
+}

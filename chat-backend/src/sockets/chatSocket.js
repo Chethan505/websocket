@@ -97,7 +97,7 @@ module.exports = (io, socket) => {
       room,
       isPrivate: false,
     });
-
+    msg.status = "delivered";
     io.to(room).emit("room-message", msg);
   });
 
