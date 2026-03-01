@@ -76,9 +76,39 @@ button:focus-visible {
 
 /* Sidebar */
 .sidebar {
-  width: 250px;
+  width: 260px;
   background-color: #2b2d31;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+}
+
+.room-section {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.online-section {
+  border-top: 1px solid #3a3c42;
+  padding-top: 15px;
+}
+
+.room-item {
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-bottom: 6px;
+  font-size: 14px;
+  transition: background 0.2s ease;
+}
+
+.room-item:hover {
+  background-color: #3a3c42;
+}
+
+.active-room {
+  background-color: #5865f2;
+  font-weight: 600;
 }
 
 /* Chat Section */
@@ -93,6 +123,7 @@ button:focus-visible {
   flex: 1;
   padding: 20px;
   overflow-y: auto;
+  overflow-x: hidden;  /* IMPORTANT */
 }
 
 /* Input Area */
@@ -127,10 +158,12 @@ button:focus-visible {
 
 /* Bubble */
 .message-bubble {
-  background-color: #313338;
-  padding: 10px 14px;
-  border-radius: 8px;
-  max-width: 60%;
+  max-width: 75%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 /* Sender */
@@ -236,4 +269,17 @@ button:focus-visible {
 .active-room {
   background-color: #5865f2;
   font-weight: bold;
+}
+
+.create-room-btn {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  background-color: #3a3c42;
+}
+
+.create-room-btn:hover {
+  background-color: #5865f2;
 }

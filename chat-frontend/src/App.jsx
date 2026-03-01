@@ -33,6 +33,16 @@ function App() {
       setMessages(history);
     });
 
+    newSocket.on("room-created", ({ roomName }) => {
+  setRooms((prev) => {
+    // prevent duplicate
+    if (prev.includes(roomName)) return prev;
+    return [...prev, roomName];
+  });
+
+  setCurrentRoom(roomName);
+});
+
     newSocket.on("room-message", (msg) => {
       setMessages((prev) => [...prev, msg]);
     });
@@ -50,9 +60,21 @@ function App() {
 
     newSocket.on("existing-rooms", (roomList) => {
       if (roomList.length > 0) {
-        setRooms(["global", ...roomList]);
+        setRooms((prev) => [...new Set(prev)]);
       }
     });
+
+    newSocket.on("room-error", (message) => {
+    alert(message);
+    });
+
+  newSocket.on("room-deleted", (roomName) => {
+  setRooms((prev) => prev.filter((r) => r !== roomName));
+
+  setCurrentRoom((prevRoom) =>
+    prevRoom === roomName ? "global" : prevRoom
+  );
+});
 
 
     setSocket(newSocket);
@@ -78,13 +100,21 @@ function App() {
     });
   };
 
+  const createRoom = () => {
+  const roomName = prompt("Enter room name:");
+  if (!roomName || !socket) return;
+
+  socket.emit("create-room", { roomName });
+};
+
   return (
     <div className="app-container">
       <Sidebar
       onlineUsers={onlineUsers}
       rooms={rooms}
       currentRoom={currentRoom}
-      setCurrentRoom={setCurrentRoom}/>
+      setCurrentRoom={setCurrentRoom}
+      createRoom={createRoom}/>
 
       <div className="chat-section">
         <ChatWindow

@@ -2,36 +2,49 @@ function Sidebar({
   onlineUsers = [],
   rooms = [],
   currentRoom,
-  setCurrentRoom
+  setCurrentRoom,
+   createRoom
 }) {
   return (
-    <div className="sidebar">
-      <h3>Rooms</h3>
+   <div className="sidebar">
 
-      <div className="room-list">
-        {rooms.map((room) => (
-          <div
-            key={room}
-            className={`room-item ${
-              currentRoom === room ? "active-room" : ""
-            }`}
-            onClick={() => setCurrentRoom(room)}
-          >
-            # {room}
+      {/* Rooms Section */}
+      <div className="room-section">
+        <h3>Rooms</h3>
+
+        <div className="room-list">
+          {rooms.map((room) => (
+            <div
+              key={room}
+              className={`room-item ${
+                currentRoom === room ? "active-room" : ""
+              }`}
+              onClick={() => setCurrentRoom(room)}
+            >
+              # {room}
+            </div>
+          ))}
+
+          <div className="create-room-btn" onClick={createRoom}>
+            + Create Room
           </div>
-        ))}
+        </div>
       </div>
 
-      <h3 style={{ marginTop: "20px" }}>Online Users</h3>
+      {/* Online Section */}
+      <div className="online-section">
+        <h3>Online Users</h3>
 
-      <div className="online-list">
-        {onlineUsers.map((user) => (
-          <div key={user.socketId} className="online-user">
-            <span className="status-dot"></span>
-            {user.username}
-          </div>
-        ))}
+        <div className="online-list">
+          {onlineUsers.map((user) => (
+            <div key={user.socketId} className="online-user">
+              <span className="status-dot"></span>
+              {user.username}
+            </div>
+          ))}
+        </div>
       </div>
+
     </div>
   );
 }

@@ -44,18 +44,28 @@ module.exports = (io, socket) => {
   // =========================
   // DISCONNECT
   // =========================
+
   socket.on("disconnect", () => {
 
-    delete onlineUsers[socket.id];
+  // 🔥 Delete rooms owned by this user
+  for (const roomName in rooms) {
+    if (rooms[roomName].owner === socket.username) {
+      delete rooms[roomName];
+      io.emit("room-deleted", roomName);
+    }
+  }
 
-    io.emit("online-users",
-      Object.entries(onlineUsers).map(([id, user]) => ({
-        socketId: id,
-        username: user.username,
-        role: user.role
-      }))
-    );
-  });
+  // Remove from online users
+  delete onlineUsers[socket.id];
+
+  io.emit("online-users",
+    Object.entries(onlineUsers).map(([id, user]) => ({
+      socketId: id,
+      username: user.username,
+      role: user.role
+    }))
+  );
+});
 
 
   // =========================
@@ -165,6 +175,7 @@ socket.on("stop-typing", ({ room }) => {
   // CREATE ROOM
   // =========================
   socket.on("create-room", ({ roomName }) => {
+    
 
     if (!roomName) return;
 
@@ -193,6 +204,7 @@ socket.on("stop-typing", ({ room }) => {
     socket.join(trimmed);
 
     socket.emit("room-created", { roomName: trimmed });
+    console.log("Room emitted to frontend:", trimmed);
   });
 
 
