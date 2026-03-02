@@ -3,27 +3,44 @@ function Sidebar({
   rooms = [],
   currentRoom,
   setCurrentRoom,
-   createRoom
+  createRoom,
+  currentUser,
+  deleteRoom
 }) {
   return (
-   <div className="sidebar">
+    <div className="sidebar">
 
       {/* Rooms Section */}
       <div className="room-section">
         <h3>Rooms</h3>
 
         <div className="room-list">
-          {rooms.map((room) => (
+          {rooms.map((roomObj) => (
             <div
-              key={room}
-              className={`room-item ${
-                currentRoom === room ? "active-room" : ""
-              }`}
-              onClick={() => setCurrentRoom(room)}
+              key={roomObj.roomName}
+              className={`room-item ${currentRoom === roomObj.roomName ? "active-room" : ""
+                }`}
+              onClick={() => setCurrentRoom(roomObj.roomName)}
             >
-              # {room}
+              <span># {roomObj.roomName}</span>
+
+              {roomObj.owner === currentUser &&
+                roomObj.roomName !== "global" && (
+                  <span
+                    className="delete-room-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteRoom(roomObj.roomName);
+                    }}
+                  >
+                    🗑
+                  </span>
+                )}
+
             </div>
           ))}
+
+
 
           <div className="create-room-btn" onClick={createRoom}>
             + Create Room

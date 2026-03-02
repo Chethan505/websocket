@@ -33,11 +33,16 @@ module.exports = (io, socket) => {
     );
 
     // 🔥 SEND ONLY ROOMS THIS USER BELONGS TO
-    const userRooms = Object.keys(rooms).filter(roomName =>
-      rooms[roomName].members.has(socket.username)
-    );
+   
 
-    socket.emit("existing-rooms", userRooms);
+    const userRooms = Object.keys(rooms)
+  .filter(roomName => rooms[roomName].members.has(socket.username))
+  .map(roomName => ({
+    roomName,
+    owner: rooms[roomName].owner
+  }));
+
+socket.emit("existing-rooms", userRooms);
   });
 
 
@@ -203,8 +208,10 @@ socket.on("stop-typing", ({ room }) => {
 
     socket.join(trimmed);
 
-    socket.emit("room-created", { roomName: trimmed });
-    console.log("Room emitted to frontend:", trimmed);
+    socket.emit("room-created", {
+  roomName: trimmed,
+  owner: socket.username
+});
   });
 
 

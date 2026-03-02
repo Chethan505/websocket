@@ -9,7 +9,9 @@ function App() {
   const [socket, setSocket] = useState(null);
   const [typingUser, setTypingUser] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
-  const [rooms, setRooms] = useState(["global"]);
+  const [rooms, setRooms] = useState([
+  { roomName: "global", owner: null }
+]);
   const [currentRoom, setCurrentRoom] = useState("global");
 
   const currentUser = "testUser"; // define user
@@ -33,12 +35,14 @@ function App() {
       setMessages(history);
     });
 
-    newSocket.on("room-created", ({ roomName }) => {
-  setRooms((prev) => {
-    // prevent duplicate
-    if (prev.includes(roomName)) return prev;
-    return [...prev, roomName];
+   
+newSocket.on("room-created", ({ roomName, owner }) => {
+  setRooms(prev => {
+    if (prev.some(r => r.roomName === roomName)) return prev;
+    return [...prev, { roomName, owner }];
   });
+
+
 
   setCurrentRoom(roomName);
 });
@@ -59,22 +63,29 @@ function App() {
     });
 
     newSocket.on("existing-rooms", (roomList) => {
-      if (roomList.length > 0) {
-        setRooms((prev) => [...new Set(prev)]);
-      }
-    });
+  setRooms([
+    { roomName: "global", owner: null },
+    ...roomList
+  ]);
+});
 
     newSocket.on("room-error", (message) => {
     alert(message);
     });
 
   newSocket.on("room-deleted", (roomName) => {
-  setRooms((prev) => prev.filter((r) => r !== roomName));
+  console.log("Room deleted event received:", roomName);
+
+  setRooms((prev) =>
+    prev.filter((roomObj) => roomObj.roomName !== roomName)
+  );
 
   setCurrentRoom((prevRoom) =>
     prevRoom === roomName ? "global" : prevRoom
   );
 });
+   
+     
 
 
     setSocket(newSocket);
@@ -107,6 +118,20 @@ function App() {
   socket.emit("create-room", { roomName });
 };
 
+const deleteRoom = (roomName) => {
+  console.log("Deleting room:", roomName);  // 👈 ADD THIS
+
+  if (!socket) return;
+
+  const confirmDelete = window.confirm(
+    `Delete room "${roomName}"?`
+  );
+
+  if (!confirmDelete) return;
+
+  socket.emit("delete-room", roomName);
+};
+
   return (
     <div className="app-container">
       <Sidebar
@@ -114,7 +139,9 @@ function App() {
       rooms={rooms}
       currentRoom={currentRoom}
       setCurrentRoom={setCurrentRoom}
-      createRoom={createRoom}/>
+      createRoom={createRoom}
+      deleteRoom={deleteRoom}
+      currentUser={currentUser}/>
 
       <div className="chat-section">
         <ChatWindow
