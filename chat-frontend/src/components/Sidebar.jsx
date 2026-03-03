@@ -5,7 +5,8 @@ function Sidebar({
   setCurrentRoom,
   createRoom,
   currentUser,
-  deleteRoom
+  deleteRoom,
+  inviteUser
 }) {
   return (
     <div className="sidebar">
@@ -56,7 +57,18 @@ function Sidebar({
           {onlineUsers.map((user) => (
             <div key={user.socketId} className="online-user">
               <span className="status-dot"></span>
-              {user.username}
+              <span className="username">{user.username}</span>
+
+              {user.username !== currentUser && (
+                <button
+                  className="invite-btn"
+                  onClick={() =>
+                    inviteUser(user.socketId, user.username)
+                  }
+                >
+                  Invite
+                </button>
+              )}
             </div>
           ))}
         </div>

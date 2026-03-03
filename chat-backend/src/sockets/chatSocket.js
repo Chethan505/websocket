@@ -11,6 +11,7 @@ module.exports = (io, socket) => {
   // =========================
   socket.on("join", ({ username, role }) => {
 
+    console.log("User joined:", username);
     // 🔥 STORE USERNAME ON SOCKET (CRITICAL FIX)
     socket.username = username;
     socket.userRole = role;
@@ -23,6 +24,7 @@ module.exports = (io, socket) => {
     }
 
     onlineUsers[socket.id] = { username, role };
+    console.log("Emitting online users:", Object.keys(onlineUsers).length);
 
     io.emit("online-users",
       Object.entries(onlineUsers).map(([id, user]) => ({
