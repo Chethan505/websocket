@@ -10,63 +10,65 @@ function App() {
   const [typingUser, setTypingUser] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(() => {
-  return sessionStorage.getItem("username") || null;
-});
+    return sessionStorage.getItem("username") || null;
+  });
   const [rooms, setRooms] = useState([
-  { roomName: "global", owner: null }
-]);
+    { roomName: "global", owner: null }
+  ]);
   const [currentRoom, setCurrentRoom] = useState("global");
 
-useEffect(() => {
-  if (!currentUser) {
-    let username = "";
+  useEffect(() => {
+    if (!currentUser) {
+      let username = "";
 
-    while (!username) {
-      username = prompt("Enter username:");
+      while (!username) {
+        username = prompt("Enter username:");
+      }
+
+      sessionStorage.setItem("username", username);
+      setCurrentUser(username);
     }
+  }, [currentUser]);
 
-    sessionStorage.setItem("username", username);
-    setCurrentUser(username);
-  }
-}, [currentUser]);
 
-  
 
   useEffect(() => {
     const newSocket = io("http://localhost:8000");
+    newSocket.on("room-history", (history) => {
+      setMessages(history || []);
+    });
     if (!currentUser) return;
-    
+
 
     newSocket.on("connect", () => {
-    newSocket.emit("join", {
-      username: currentUser,
-      role: "user"
-    });
+      newSocket.emit("join", {
+        username: currentUser,
+        role: "user"
+      });
 
- 
 
-  newSocket.on("online-users", (users) => {
-    setOnlineUsers(users);
-  });
+
+
 
       newSocket.emit("join-room", currentRoom);
     });
-
-    newSocket.on("room-history", (history) => {
-      setMessages(history);
+    newSocket.on("online-users", (users) => {
+      setOnlineUsers(users);
     });
 
    
-newSocket.on("room-created", ({ roomName, owner }) => {
-  setRooms(prev => {
-    if (prev.some(r => r.roomName === roomName)) return prev;
-    return [...prev, { roomName, owner }];
-  });
+
+
+    newSocket.on("room-created", ({ roomName, owner }) => {
+      setRooms(prev => {
+        if (prev.some(r => r.roomName === roomName)) return prev;
+        return [...prev, { roomName, owner }];
+      });
 
 
 
-  setCurrentRoom(roomName);
-});
+      setCurrentRoom(roomName);
+    });
 
     newSocket.on("room-message", (msg) => {
       setMessages((prev) => [...prev, msg]);
@@ -79,59 +81,69 @@ newSocket.on("room-created", ({ roomName, owner }) => {
     newSocket.on("stop-typing", () => {
       setTypingUser(null);
     });
-  
+
 
     newSocket.on("existing-rooms", (roomList) => {
-  setRooms([
-    { roomName: "global", owner: null },
-    ...roomList
-  ]);
-});
-
-newSocket.on("room-invite", ({ roomName, fromUsername, fromSocketId }) => {
-  const accept = window.confirm(
-    `${fromUsername} invited you to join room "${roomName}". Accept?`
-  );
-
-  if (accept) {
-    newSocket.emit("accept-room-invite", {
-      roomName,
-      fromSocketId
+      setRooms([
+        { roomName: "global", owner: null },
+        ...roomList
+      ]);
     });
-  } else {
-    newSocket.emit("ignore-room-invite", {
-      roomName,
-      fromSocketId
+
+    newSocket.on("room-invite", ({ roomName, fromUsername, fromSocketId }) => {
+
+      const accept = window.confirm(
+        `${fromUsername} invited you to join ${roomName}`
+      );
+
+      if (accept) {
+        newSocket.emit("accept-room-invite", {
+          roomName,
+          fromSocketId
+        });
+      } else {
+        newSocket.emit("ignore-room-invite", {
+          roomName,
+          fromSocketId
+        });
+      }
+
     });
-  }
-});
 
-newSocket.on("room-joined", (roomName) => {
-  setRooms((prev) => {
-    if (prev.some((r) => r.roomName === roomName)) return prev;
-    return [...prev, { roomName, owner: null }];
-  });
+    newSocket.on("room-left", (roomName) => {
 
-  setCurrentRoom(roomName);
-});
+      setRooms(prev =>
+        prev.filter(room => room.roomName !== roomName)
+      );
+
+      setCurrentRoom("global");
+    });
+
+    newSocket.on("room-joined", (roomName) => {
+      setRooms((prev) => {
+        if (prev.some((r) => r.roomName === roomName)) return prev;
+        return [...prev, { roomName, owner: null }];
+      });
+
+      setCurrentRoom(roomName);
+    });
 
     newSocket.on("room-error", (message) => {
-    alert(message);
+      alert(message);
     });
 
-  newSocket.on("room-deleted", (roomName) => {
-  console.log("Room deleted event received:", roomName);
+    newSocket.on("room-deleted", (roomName) => {
 
-  setRooms((prev) =>
-    prev.filter((roomObj) => roomObj.roomName !== roomName)
-  );
+      setRooms(prev =>
+        prev.filter(room => room.roomName !== roomName)
+      );
 
-  setCurrentRoom((prevRoom) =>
-    prevRoom === roomName ? "global" : prevRoom
-  );
-});
-   
-     
+      setMessages([]); // clear chat history
+
+      setCurrentRoom("global");
+
+    });
+
 
 
     setSocket(newSocket);
@@ -140,15 +152,20 @@ newSocket.on("room-joined", (roomName) => {
   }, [currentUser]);
 
   useEffect(() => {
-  if (!socket) return;
 
-  setMessages([]);
-  socket.emit("join-room", currentRoom);
-}, [currentRoom]);
+    if (!socket) return;
+
+    // clear old messages
+    setMessages([]);
+
+    // join the selected room
+    socket.emit("join-room", currentRoom);
+
+  }, [currentRoom, socket]);
 
   const sendMessage = (text) => {
     if (!socket) return;
-  
+
 
     socket.emit("room-message", {
       room: currentRoom,
@@ -158,49 +175,67 @@ newSocket.on("room-joined", (roomName) => {
   };
 
   const createRoom = () => {
-  const roomName = prompt("Enter room name:");
-  if (!roomName || !socket) return;
+    const roomName = prompt("Enter room name:");
+    if (!roomName || !socket) return;
 
-  socket.emit("create-room", { roomName });
-};
+    socket.emit("create-room", { roomName });
+  };
 
-const deleteRoom = (roomName) => {
-  console.log("Deleting room:", roomName);  // 👈 ADD THIS
+  const deleteRoom = (roomName) => {
+    console.log("Deleting room:", roomName);  // 👈 ADD THIS
 
-  if (!socket) return;
+    if (!socket) return;
 
-  const confirmDelete = window.confirm(
-    `Delete room "${roomName}"?`
-  );
+    const confirmDelete = window.confirm(
+      `Delete room "${roomName}"?`
+    );
 
-  if (!confirmDelete) return;
+    if (!confirmDelete) return;
 
-  socket.emit("delete-room", roomName);
-};
+    socket.emit("delete-room", roomName);
+  };
 
-const inviteUser = (toSocketId, username) => {
-  if (!socket) return;
+  const inviteUser = (toSocketId, username) => {
 
-  socket.emit("room-invite", {
-    toSocketId,
-    roomName: currentRoom,
-    fromUsername: currentUser
-  });
+    if (currentRoom === "global") {
+      alert("Users cannot be invited to the global room.");
+      return;
+    }
 
-  alert(`Invite sent to ${username}`);
-};
+    if (!socket) return;
+
+    socket.emit("room-invite", {
+      toSocketId,
+      roomName: currentRoom,
+      fromUsername: currentUser
+    });
+
+    alert(`Invite sent to ${username}`);
+  };
+
+  const leaveRoom = (roomName) => {
+    if (!socket) return;
+
+    socket.emit("leave-room-permanently", roomName);
+  };
+
+  const changeRoom = (roomName) => {
+    setCurrentRoom(roomName);
+    setMessages([]); // clear old messages
+    socket.emit("join-room", roomName);
+  };
 
   return (
     <div className="app-container">
       <Sidebar
-      onlineUsers={onlineUsers}
-      rooms={rooms}
-      currentRoom={currentRoom}
-      setCurrentRoom={setCurrentRoom}
-      createRoom={createRoom}
-      deleteRoom={deleteRoom}
-      currentUser={currentUser}
-      inviteUser={inviteUser}/>
+        onlineUsers={onlineUsers}
+        rooms={rooms}
+        currentRoom={currentRoom}
+        setCurrentRoom={setCurrentRoom}
+        createRoom={createRoom}
+        deleteRoom={deleteRoom}
+        currentUser={currentUser}
+        inviteUser={inviteUser} />
 
       <div className="chat-section">
         <ChatWindow
@@ -208,6 +243,10 @@ const inviteUser = (toSocketId, username) => {
           currentUser={currentUser}
           typingUser={typingUser}
           currentRoom={currentRoom}
+          leaveRoom={leaveRoom}
+          isOwner={
+            rooms.find(r => r.roomName === currentRoom)?.owner === currentUser
+          }
         />
 
         <MessageInput
@@ -215,7 +254,7 @@ const inviteUser = (toSocketId, username) => {
           socket={socket}
           currentUser={currentUser}
         />
-        
+
       </div>
     </div>
   );

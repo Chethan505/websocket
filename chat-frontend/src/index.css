@@ -121,9 +121,12 @@ button:focus-visible {
 /* Chat Window */
 .chat-window {
   flex: 1;
-  padding: 20px;
   overflow-y: auto;
   overflow-x: hidden;  /* IMPORTANT */
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+
 }
 
 /* Input Area */
@@ -158,7 +161,8 @@ button:focus-visible {
 
 /* Bubble */
 .message-bubble {
-  max-width: 75%;
+  max-width: 60%;
+  white-space: pre-wrap;
   padding: 12px 16px;
   border-radius: 12px;
   word-wrap: break-word;
@@ -172,6 +176,14 @@ button:focus-visible {
   font-size: 13px;
   margin-bottom: 4px;
   color: #9aa0a6;
+}
+
+.own-message {
+  margin-left: auto;
+}
+
+.other-message {
+  margin-right: auto;
 }
 
 /* Text */
@@ -311,4 +323,26 @@ button:focus-visible {
   border-radius: 4px;
   cursor: pointer;
   color: white;
+}
+
+.invite-btn:disabled {
+  background: gray;
+  cursor: not-allowed;
+}
+
+.chat-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px;
+  border-bottom:1px solid #ccc;
+}
+
+.leave-room-btn{
+  background:#ff4d4f;
+  border:none;
+  color:white;
+  padding:6px 10px;
+  border-radius:5px;
+  cursor:pointer;
 }

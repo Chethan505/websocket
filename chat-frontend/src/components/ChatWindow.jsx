@@ -4,9 +4,18 @@ import MessageBubble from "./MessageBubble";
 
 // messages
 
-function ChatWindow({ messages, currentUser, typingUser, currentRoom }) {
+function ChatWindow({ messages, currentUser, typingUser, currentRoom,isOwner,leaveRoom }) {
   
   const bottomRef = useRef(null);
+
+  {currentRoom !== "global" && (
+  <button
+    className="leave-room-btn"
+    onClick={() => leaveRoom(currentRoom)}
+  >
+    Leave Room
+  </button>
+)}
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -19,8 +28,19 @@ function ChatWindow({ messages, currentUser, typingUser, currentRoom }) {
     
     <div className="chat-window">
       <div className="chat-header">
-        #{currentRoom}
-      </div>
+
+  <h3># {currentRoom}</h3>
+
+  {currentRoom !== "global" && !isOwner && (
+    <button
+      className="leave-room-btn"
+      onClick={() => leaveRoom(currentRoom)}
+    >
+      Leave Room
+    </button>
+  )}
+
+</div>
       {messages.map((msg, index) => {
         const previousMessage = messages[index - 1];
         const isSameSender =

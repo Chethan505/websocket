@@ -93,6 +93,22 @@ socket.emit("existing-rooms", userRooms);
   });
 
 
+  socket.on("leave-room-permanently", (roomName) => {
+
+  if (!rooms[roomName]) return;
+
+  // ❌ Owner cannot leave
+  if (rooms[roomName].owner === socket.username) {
+    socket.emit("room-error", "Room owner cannot leave. Delete the room instead.");
+    return;
+  }
+
+  rooms[roomName].members.delete(socket.username);
+
+  socket.leave(roomName);
+
+  socket.emit("room-left", roomName);
+});
   // =========================
   // LEAVE ROOM
   // =========================
@@ -220,24 +236,31 @@ socket.on("stop-typing", ({ room }) => {
   // =========================
   // DELETE ROOM (OWNER ONLY)
   // =========================
-  socket.on("delete-room", async (roomName) => {
+socket.on("delete-room", async (roomName) => {
 
-    if (!roomName || roomName === "global") return;
+  if (!rooms[roomName]) return;
 
-    if (!rooms[roomName]) return;
+  if (rooms[roomName].owner !== socket.username) {
+    socket.emit("room-error", "Only the room owner can delete this room");
+    return;
+  }
 
-    // 🔥 OWNER CHECK FIX
-    if (rooms[roomName].owner !== socket.username) {
-      socket.emit("room-error", "Only the room owner can delete this room");
-      return;
-    }
+  console.log("Deleting messages for room:", roomName);
 
-    await Message.deleteMany({ room: roomName });
+  // delete all messages in DB
+  await Message.deleteMany({ room: roomName });
 
-    delete rooms[roomName];
+  // remove room from memory
+  delete rooms[roomName];
 
-    io.to(roomName).emit("room-deleted", roomName);
-  });
+  // notify all users in the room
+  io.to(roomName).emit("room-deleted", roomName);
+
+  // make all sockets leave the room
+  const clients = await io.in(roomName).fetchSockets();
+  clients.forEach((client) => client.leave(roomName));
+
+});
 
 
   // =========================

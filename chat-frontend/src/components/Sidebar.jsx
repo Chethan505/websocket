@@ -58,17 +58,16 @@ function Sidebar({
             <div key={user.socketId} className="online-user">
               <span className="status-dot"></span>
               <span className="username">{user.username}</span>
-
-              {user.username !== currentUser && (
-                <button
-                  className="invite-btn"
-                  onClick={() =>
-                    inviteUser(user.socketId, user.username)
-                  }
-                >
-                  Invite
-                </button>
-              )}
+              {user.username !== currentUser &&
+                currentRoom !== "global" &&
+                rooms.find(r => r.roomName === currentRoom)?.owner === currentUser && (
+                  <button
+                    className="invite-btn"
+                    onClick={() => inviteUser(user.socketId, user.username)}
+                  >
+                    Invite
+                  </button>
+                )}
             </div>
           ))}
         </div>
