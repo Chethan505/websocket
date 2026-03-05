@@ -346,3 +346,23 @@ button:focus-visible {
   border-radius:5px;
   cursor:pointer;
 }
+
+.auth-page{
+  width:300px;
+  margin:120px auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.auth-page input{
+  padding:8px;
+}
+
+.auth-page button{
+  padding:10px;
+  background:#5865f2;
+  color:white;
+  border:none;
+  cursor:pointer;
+}
