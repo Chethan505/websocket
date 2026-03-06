@@ -1,134 +1,78 @@
-/* FULL PAGE BACKGROUND */
+/* reset */
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+/* full page */
 .auth-container{
-  position:fixed;
-  top:0;
-  left:0;
-
-  width:100%;
   height:100vh;
-
   display:flex;
   justify-content:center;
   align-items:center;
-
-  background: linear-gradient(
-    135deg,
-    #f58529,
-    #feda77,
-    #dd2a7b,
-    #8134af,
-    #515bd4
-  );
-
-  background-size:400% 400%;
-  animation: instaGradient 10s ease infinite;
+  background:#ffe6ef;   /* light pink */
 }
 
-/* ANIMATED INSTAGRAM GRADIENT */
-@keyframes instaGradient{
-  0%{background-position:0% 50%;}
-  50%{background-position:100% 50%;}
-  100%{background-position:0% 50%;}
-}
-
-
-/* AUTH CARD */
+/* form card */
 .auth-card{
-  width:380px;
-  padding:45px;
-  border-radius:20px;
+  width:350px;
+  padding:30px;
 
-  background: rgba(255,255,255,0.08);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background:white;
 
-  border:1px solid rgba(255,255,255,0.2);
+  border-radius:10px;
 
-  box-shadow:
-  0 10px 40px rgba(0,0,0,0.3),
-  0 0 40px rgba(255,0,128,0.2);
+  box-shadow:0 6px 20px rgba(0,0,0,0.15);
 
   display:flex;
   flex-direction:column;
-  gap:18px;
-
-  color:white;
+  gap:15px;
 }
 
-
-/* TITLE */
+/* title */
 .auth-card h2{
   text-align:center;
-  font-size:26px;
-  font-weight:700;
+  color:#d63384;
+  margin-bottom:10px;
 }
 
-
-/* INPUTS */
+/* input fields */
 .auth-card input{
-  padding:12px;
-  border:none;
-  border-radius:8px;
-
-  background:#2c2c3c;
-  color:white;
+  padding:10px;
+  border:1px solid #f5a3c7;
+  border-radius:6px;
   font-size:14px;
-}
-
-.auth-card input:focus{
   outline:none;
-  border:1px solid #ff2f92;
 }
 
+/* input focus */
+.auth-card input:focus{
+  border-color:#ff69b4;
+}
 
-/* BUTTON */
+/* button */
 .auth-card button{
-  padding:14px;
+  padding:10px;
   border:none;
-  border-radius:12px;
+  border-radius:6px;
 
-  font-size:16px;
-  font-weight:600;
-
+  background:#ff69b4;
   color:white;
 
-  background:linear-gradient(
-    90deg,
-    #ff2d95,
-    #ff0066
-  );
-
+  font-weight:bold;
   cursor:pointer;
-
-  transition:0.2s;
 }
 
+/* button hover */
 .auth-card button:hover{
-  transform:translateY(-2px);
-  box-shadow:0 8px 25px rgba(255,0,120,0.4);
+  background:#ff4da6;
 }
 
-
-/* LOGIN SWITCH */
+/* bottom text */
 .auth-switch{
   text-align:center;
-  color:#ccc;
   font-size:14px;
-}
-
-.auth-switch span{
-  color:#ff2f92;
+  color:#c2185b;
   cursor:pointer;
-
-}
-
-.auth-card p{
-  text-align:center;
-  color:rgba(255,255,255,0.8);
-}
-
-.auth-card p span{
-  color:#ff2d95;
-  cursor:pointer;
-  font-weight:600;
 }

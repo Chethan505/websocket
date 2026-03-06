@@ -36,7 +36,9 @@ function Register({ goToLogin }) {
       <button>Register</button>
 
       <p className="auth-switch">
-        Already have an account? Login
+
+        Already have an account?
+      <span onClick={goToLogin}>Login</span>
       </p>
 
     </div>

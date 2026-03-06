@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import './Auth.css'
+import './Login.css'
 
 function Login({ setUser, goToRegister }) {
   const [email, setEmail] = useState("");
@@ -24,9 +24,12 @@ function Login({ setUser, goToRegister }) {
 
   return (
     <div className="auth-page">
+  <div className="login-card">
       <h2>Login</h2>
+      
+   
 
-      <input
+     <input
         type="email"
         placeholder="Email"
         onChange={(e) => setEmail(e.target.value)}
@@ -38,14 +41,26 @@ function Login({ setUser, goToRegister }) {
         onChange={(e) => setPassword(e.target.value)}
       />
 
-      <button onClick={handleLogin}>
+   <button onClick={handleLogin}>
         Login
       </button>
-
       <p onClick={goToRegister}>
         Create account
       </p>
     </div>
+
+    
+  </div>
+
+      
+
+      
+
+    
+
+      
+
+      
   );
 }
 
