@@ -1,12 +1,14 @@
 const express = require("express");
 const path = require("path");
+const cors = require("cors");
 
+const app = express();
+app.use(cors());
+app.use(express.json());
 const authRoutes = require("./routes/authRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
 
-const app = express();
-app.use(express.json());
 
 
 app.use("/api/auth", authRoutes);

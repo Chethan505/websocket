@@ -3,24 +3,36 @@ import axios from "axios";
 import './Login.css'
 
 function Login({ setUser, goToRegister }) {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleLogin = async () => {
-    try {
-      const res = await axios.post(
-        "http://localhost:8000/api/auth/login",
-        { email, password }
-      );
+const handleLogin = async () => {
+  try {
 
-      localStorage.setItem("token", res.data.token);
+    const res = await axios.post(
+      "http://localhost:8000/api/auth/login",
+      {
+        username,
+        password
+      }
+    );
 
-      setUser(res.data.user);
+    console.log(res.data);
 
-    } catch (err) {
-      alert("Login failed");
-    }
-  };
+    // save token
+    localStorage.setItem("token", res.data.token);
+
+    // update app state
+    setUser({
+      username: res.data.username
+    });
+
+  } catch (err) {
+
+    alert(err.response?.data?.message || "Login failed");
+
+  }
+};
 
   return (
     <div className="auth-page">
@@ -32,7 +44,7 @@ function Login({ setUser, goToRegister }) {
      <input
         type="email"
         placeholder="Email"
-        onChange={(e) => setEmail(e.target.value)}
+        onChange={(e) => setUsername(e.target.value)}
       />
 
       <input

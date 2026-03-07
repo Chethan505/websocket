@@ -4,14 +4,14 @@ import "./Auth.css"
 
 function Register({ goToLogin }) {
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const handleRegister = async () => {
+    console.log("Registering:", username, password);
     try {
       await axios.post("http://localhost:8000/api/auth/register", {
         username,
-        email,
+
         password
       });
 
@@ -19,31 +19,44 @@ function Register({ goToLogin }) {
       goToLogin();
 
     } catch (err) {
-      alert("Registration failed");
+
+      const message =
+        err.response?.data?.message || "Registration failed";
+
+      alert(message);
     }
   };
 
   return (
-  <div className="auth-container">
-    <div className="auth-card">
+    <div className="auth-container">
+      <div className="auth-card">
 
-      <h2>Create Account</h2>
+        <h2>Create Account</h2>
 
-      <input type="text" placeholder="Username" />
-      <input type="email" placeholder="Email" />
-      <input type="password" placeholder="Password" />
 
-      <button>Register</button>
+        <input
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-      <p className="auth-switch">
+        <button onClick={handleRegister}>Register</button>
 
-        Already have an account?
-      <span onClick={goToLogin}>Login</span>
-      </p>
+        <p className="auth-switch">
 
+          Already have an account?
+          <span onClick={goToLogin}>Login</span>
+        </p>
+
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
 export default Register;

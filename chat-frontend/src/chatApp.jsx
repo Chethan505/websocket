@@ -4,8 +4,9 @@ import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
 import Login from "./pages/Login";
+import "./index.css"
 
-function chatApp() {
+function ChatApp({ user })  {
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
   const [typingUser, setTypingUser] = useState(null);
@@ -15,16 +16,10 @@ function chatApp() {
     { roomName: "global", owner: null }
   ]);
   const [currentRoom, setCurrentRoom] = useState("global");
-  const [user, setUser] = useState(null);
 
-if (!user) {
-  return <Login setUser={setUser} />;
-}
 
 useEffect(() => {
-  if (user) {
-    setCurrentUser(user.username);
-  }
+  setCurrentUser(user.username);
 }, [user]);
 
 useEffect(()=>{
@@ -266,4 +261,4 @@ useEffect(() => {
   );
 }
 
-export default chatApp;
+export default ChatApp;

@@ -52,3 +52,29 @@
   color:#c2185b;
   cursor:pointer;
 }
+.login-card button{
+  width:260px;
+  padding:10px;
+  margin-top:10px;
+  border:none;
+  border-radius:6px;
+  background:#ff69b4;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;   /* add this */
+}
+.login-card button{
+  width:260px;
+  padding:10px;
+  margin-top:10px;
+  border:none;
+  border-radius:6px;
+  background:#ff69b4;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;   /* add this */
+}
+
+.login-card button:hover{
+  background:#ff4da6;
+}
