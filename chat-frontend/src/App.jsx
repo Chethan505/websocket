@@ -2,7 +2,7 @@ import { useState } from "react";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import ChatApp from "./chatApp";
-//App
+//App content
 function App() {
 
   const [page, setPage] = useState("register");
