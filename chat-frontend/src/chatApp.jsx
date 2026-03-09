@@ -4,7 +4,9 @@ import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
 import Login from "./pages/Login";
-import "./index.css"
+import "./index.css"; 
+
+
 
 function ChatApp({ user })  {
   const [messages, setMessages] = useState([]);
