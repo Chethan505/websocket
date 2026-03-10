@@ -25,11 +25,18 @@ function MessageInput({ sendMessage, socket, currentUser }) {
 
   return (
     <div className="message-input">
-      <input
+      <input className="message-input-text"
         value={text}
         onChange={(e) => handleTyping(e.target.value)}
+         onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleSend();
+          }
+        }}
         placeholder="Type a message..."
       />
+     
       <button onClick={handleSend}>Send</button>
     </div>
   );
