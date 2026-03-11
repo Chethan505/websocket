@@ -78,19 +78,27 @@ socket.emit("existing-rooms", userRooms);
   // =========================
   // JOIN ROOM
   // =========================
-  socket.on("join-room", async (data) => {
+socket.on("join-room", async (data) => {
 
-    if (!data) return;
+  const room = typeof data === "string" ? data : data.roomName;
 
-    const room = typeof data === "string" ? data : data.roomName;
+  if (!room) return;
 
-    if (!room) return;
+  socket.join(room);
 
-    socket.join(room);
+  // Private rooms → empty history
+  if (rooms[room]) {
+
+    socket.emit("room-history", []);
+
+  } else {
 
     const history = await Message.find({ room });
     socket.emit("room-history", history);
-  });
+
+  }
+
+});
 
 
   socket.on("leave-room-permanently", (roomName) => {
@@ -120,19 +128,37 @@ socket.emit("existing-rooms", userRooms);
   // =========================
   // ROOM MESSAGE
   // =========================
-  socket.on("room-message", async ({ room, sender, message }) => {
+socket.on("room-message", async ({ room, sender, message }) => {
 
-    if (mutedUsers.has(socket.id)) return;
+  if (mutedUsers.has(socket.id)) return;
 
-    const msg = await Message.create({
+  let msg;
+
+  // If room exists in rooms object → it's a private room
+  if (rooms[room]) {
+
+    msg = {
       sender,
       message,
       room,
-      isPrivate: false,
+      status: "delivered",
+      createdAt: new Date()
+    };
+
+  } else {
+
+    // Only global stored
+    msg = await Message.create({
+      sender,
+      message,
+      room
     });
-    msg.status = "delivered";
-    io.to(room).emit("room-message", msg);
-  });
+
+  }
+
+  io.to(room).emit("room-message", msg);
+
+});
 
 
   // =========================
