@@ -6,7 +6,10 @@ import ChatApp from "./chatApp";
 function App() {
 
   const [page, setPage] = useState("register");
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+  const savedUser = localStorage.getItem("user");
+  return savedUser ? JSON.parse(savedUser) : null;
+});
 
   if (!user) {
     if (page === "register") {
