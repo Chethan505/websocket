@@ -1,43 +1,91 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+import EmojiPicker from "emoji-picker-react";
 
-function MessageInput({ sendMessage, socket, currentUser }) {
+function MessageInput({ sendMessage }) {
+
   const [text, setText] = useState("");
-
-  const handleTyping = (value) => {
-    setText(value);
-
-    socket.emit("typing", {
-      room: "global",
-      username: currentUser
-    });
-
-    setTimeout(() => {
-      socket.emit("stop-typing", { room: "global" });
-    }, 1000);
-  };
+  const [showEmoji, setShowEmoji] = useState(false);
+  const emojiRef = useRef(null);
 
   const handleSend = () => {
     if (!text.trim()) return;
     sendMessage(text);
     setText("");
-    socket.emit("stop-typing", { room: "global" });
   };
+
+  const onEmojiClick = (emojiData) => {
+    setText(prev => prev + emojiData.emoji);
+  };
+
+   const sendFile = async (file) => {
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("http://localhost:8000/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+
+    socket.emit("room-message", {
+      sender: currentUser,
+      file: data.fileUrl
+    });
+
+  };
+
+  // close emoji panel when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (emojiRef.current && !emojiRef.current.contains(e.target)) {
+        setShowEmoji(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <div className="message-input">
-      <input className="message-input-text"
+
+      {showEmoji && (
+        <div className="emoji-panel" ref={emojiRef}>
+          <EmojiPicker onEmojiClick={onEmojiClick}/>
+        </div>
+      )}
+
+      <button
+        className="emoji-btn"
+        onClick={() => setShowEmoji(prev => !prev)}
+      >
+        😊
+      </button>
+
+      <input
+        type="text"
         value={text}
-        onChange={(e) => handleTyping(e.target.value)}
-         onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
+        placeholder="Type a message..."
+        onChange={(e)=>setText(e.target.value)}
+        onKeyDown={(e)=>{
+          if(e.key==="Enter"){
             handleSend();
           }
         }}
-        placeholder="Type a message..."
       />
-     
-      <button onClick={handleSend}>Send</button>
+
+      <button
+        className="send-btn"
+        onClick={handleSend}
+      >
+        Send
+      </button>
+
     </div>
   );
 }
