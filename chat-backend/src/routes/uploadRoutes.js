@@ -15,7 +15,7 @@ const upload = multer({ storage });
 
 router.post("/", upload.single("file"), (req, res) => {
   res.json({
-    fileUrl: `/uploads/${req.file.filename}`,
+    fileUrl: `http://localhost:8000/uploads/${req.file.filename}`,
     fileName: req.file.originalname,
     mimeType: req.file.mimetype
   });

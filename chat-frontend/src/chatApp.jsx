@@ -4,11 +4,11 @@ import Sidebar from "./components/Sidebar";
 import ChatWindow from "./components/ChatWindow";
 import MessageInput from "./components/MessageInput";
 import Login from "./pages/Login";
-import "./index.css"; 
+import "./index.css";
 
 
 
-function ChatApp({ user })  {
+function ChatApp({ user }) {
   const [messages, setMessages] = useState([]);
   const [socket, setSocket] = useState(null);
   const [typingUser, setTypingUser] = useState(null);
@@ -20,23 +20,23 @@ function ChatApp({ user })  {
   const [currentRoom, setCurrentRoom] = useState("global");
 
 
-useEffect(() => {
-  setCurrentUser(user.username);
-}, [user]);
+  useEffect(() => {
+    setCurrentUser(user.username);
+  }, [user]);
 
-useEffect(()=>{
+  useEffect(() => {
 
-  
-  const newSocket = io("http://localhost:8000", {
-    auth: {
-    token: localStorage.getItem("token")
-  }
-});
-   
+
+    const newSocket = io("http://localhost:8000", {
+      auth: {
+        token: localStorage.getItem("token")
+      }
+    });
+
 
     newSocket.off("room-history").on("room-history", (history) => {
-  setMessages(history || []);
-});
+      setMessages(history || []);
+    });
     if (!currentUser) return;
 
 
@@ -56,9 +56,17 @@ useEffect(()=>{
       setOnlineUsers(users);
     });
 
-   
 
-    
+    newSocket.on("file-message", (msg) => {
+      setMessages((prev) => {
+        // prevent duplicate (already added locally)
+        if (prev.some(m => m.fileUrl === msg.fileUrl)) return prev;
+        return [...prev, msg];
+      });
+    });
+
+
+
     newSocket.on("room-created", ({ roomName, owner }) => {
       setRooms(prev => {
         if (prev.some(r => r.roomName === roomName)) return prev;
@@ -81,17 +89,17 @@ useEffect(()=>{
     newSocket.on("stop-typing", () => {
       setTypingUser(null);
     });
-    
-    
+
+
     newSocket.on("existing-rooms", (roomList) => {
       setRooms([
         { roomName: "global", owner: null },
         ...roomList
       ]);
     });
-    
+
     newSocket.on("room-invite", ({ roomName, fromUsername, fromSocketId }) => {
-      
+
       const accept = window.confirm(
         `${fromUsername} invited you to join ${roomName}`
       );
@@ -107,18 +115,18 @@ useEffect(()=>{
           fromSocketId
         });
       }
-      
+
     });
-    
+
     newSocket.on("room-left", (roomName) => {
-      
+
       setRooms(prev =>
         prev.filter(room => room.roomName !== roomName)
       );
-      
+
       setCurrentRoom("global");
     });
-    
+
     newSocket.on("room-joined", (roomName) => {
       setRooms((prev) => {
         if (prev.some((r) => r.roomName === roomName)) return prev;
@@ -127,54 +135,60 @@ useEffect(()=>{
 
       setCurrentRoom(roomName);
     });
-    
+
     newSocket.on("room-error", (message) => {
       alert(message);
     });
-    
+
     newSocket.on("room-deleted", (roomName) => {
-      
+
       setRooms(prev =>
         prev.filter(room => room.roomName !== roomName)
       );
 
       setMessages([]); // clear chat history
-      
+
       setCurrentRoom("global");
-      
+
     });
-    
+
     setSocket(newSocket);
-  
+
     return () => newSocket.disconnect();
   }, [currentUser]);
-    
- 
-
-
-useEffect(() => {
-  if (!socket) return;
-
-  // 1. Clear old room messages
-  setMessages([]);
-
-  // 2. Join the new room
-  socket.emit("join-room", currentRoom);
-
-}, [currentRoom, socket]);
-
-
-  const sendMessage = (text) => {
-    if (!socket) 
-      return;
 
 
 
-    socket.emit("room-message", {
-      room: currentRoom,
-      sender: currentUser,
-      message: text
-    });
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // 1. Clear old room messages
+    setMessages([]);
+
+    // 2. Join the new room
+    socket.emit("join-room", currentRoom);
+
+  }, [currentRoom, socket]);
+
+
+  const sendMessage = (data) => {
+    if (!socket) return;
+
+    // TEXT MESSAGE
+    if (typeof data === "string") {
+      socket.emit("room-message", {
+        room: currentRoom,
+        sender: currentUser,
+        message: data,           // ✅ correct variable
+        createdAt: new Date()
+      });
+    }
+
+    // FILE MESSAGE
+    else {
+      socket.emit("file-message", data);
+    }
   };
 
   const createRoom = () => {

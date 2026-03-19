@@ -49,7 +49,7 @@ function ChatWindow({ messages, currentUser, typingUser, currentRoom,isOwner,lea
 
         return (
           <MessageBubble
-            key={msg._id}
+            key={msg._id || msg.id}
             msg={msg}
             isOwn={msg.sender === currentUser}
             isSameSender={isSameSender}
